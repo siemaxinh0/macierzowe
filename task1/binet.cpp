@@ -48,6 +48,11 @@
 //   g++ -O2 -std=c++17 -o binet.exe binet.cpp
 //   binet.exe              -> test dla domyslnej listy rozmiarow
 //   binet.exe 5 16 100     -> test dla podanych rozmiarow n
+//
+// Tryby uzywane do sprawozdania (wynik w formacie CSV na stdout):
+//   binet.exe --flops nMin nMax              -> liczba operacji ze wzoru (bez mnozenia)
+//   binet.exe --time nMin nMax krok powt.    -> zmierzony czas i liczba operacji
+//   binet.exe --example                      -> przyklad 4x4 (magic(4) * magic(4)'/7)
 // ============================================================================
 
 #include <algorithm>   // std::max
@@ -56,7 +61,10 @@
 #include <cstdlib>     // std::atoi
 #include <iomanip>     // formatowanie tabeli
 #include <iostream>
+#include <map>         // memoizacja w modelu liczby operacji
 #include <random>      // generator liczb losowych
+#include <string>
+#include <tuple>
 #include <vector>
 
 // Licznik operacji zmiennoprzecinkowych (+, -, *, /). Globalny, zeby kazda
@@ -214,7 +222,96 @@ double maxDifference(const Matrix& A, const Matrix& B) {
     return d;
 }
 
+// ----------------------------------------------------------------------------
+// MODEL LICZBY OPERACJI (dla raportu): dokladnie ta sama rekurencja co
+// multiplyBinet, ale zamiast mnozyc macierze tylko SUMUJE koszty. Dzieki temu
+// mozna policzyc liczbe operacji dla duzych n bez wykonywania obliczen.
+// Wyniki sa identyczne z licznikiem g_flops (sprawdza to tryb --time).
+//   - przypadek bazowy: p*r*q mnozen + p*r*(q-1) dodawan,
+//   - krok rekurencji: 8 podproblemow + p*r dodawan (4 bloki lacznie p*r elementow).
+// Wyniki podproblemow zapamietujemy w mapie (memoizacja) - rozmiary blokow
+// przyjmuja na kazdym poziomie tylko 2 rozne wartosci, wiec stanow jest malo.
+// ----------------------------------------------------------------------------
+unsigned long long flopsModel(int p, int q, int r,
+                              std::map<std::tuple<int, int, int>, unsigned long long>& memo) {
+    if (p == 1 || q == 1 || r == 1)
+        return 1ULL * p * r * q + 1ULL * p * r * (q - 1);
+    auto key = std::make_tuple(p, q, r);
+    auto it = memo.find(key);
+    if (it != memo.end()) return it->second;
+
+    const int ph = (p + 1) / 2, qh = (q + 1) / 2, rh = (r + 1) / 2;
+    const int pl = p - ph, ql = q - qh, rl = r - rh;
+    // Osiem iloczynow blokow: (ph x qh)(qh x rh), (ph x ql)(ql x rh), itd.
+    unsigned long long total = 1ULL * p * r;  // 4 dodawania blokow = p*r operacji
+    total += flopsModel(ph, qh, rh, memo) + flopsModel(ph, ql, rh, memo);  // C11
+    total += flopsModel(ph, qh, rl, memo) + flopsModel(ph, ql, rl, memo);  // C12
+    total += flopsModel(pl, qh, rh, memo) + flopsModel(pl, ql, rh, memo);  // C21
+    total += flopsModel(pl, qh, rl, memo) + flopsModel(pl, ql, rl, memo);  // C22
+    memo[key] = total;
+    return total;
+}
+
 int main(int argc, char** argv) {
+    // TRYB RAPORTOWY 1:  binet.exe --flops nMin nMax
+    // Wypisuje CSV "n,flops" ze wzoru rekurencyjnego (bez mnozenia macierzy).
+    if (argc == 4 && std::string(argv[1]) == "--flops") {
+        std::map<std::tuple<int, int, int>, unsigned long long> memo;
+        std::cout << "n,flops\n";
+        for (int n = std::atoi(argv[2]); n <= std::atoi(argv[3]); ++n)
+            std::cout << n << "," << flopsModel(n, n, n, memo) << "\n";
+        return 0;
+    }
+
+    // TRYB RAPORTOWY 2:  binet.exe --time nMin nMax krok powtorzenia
+    // Dla kazdego n wykonuje prawdziwe mnozenie, mierzy czas (minimum z kilku
+    // powtorzen - ogranicza wplyw zaklocen systemu) i wypisuje CSV
+    // "n,flops_zmierzone,czas_ms".
+    if (argc == 6 && std::string(argv[1]) == "--time") {
+        const int nMin = std::atoi(argv[2]), nMax = std::atoi(argv[3]);
+        const int step = std::atoi(argv[4]), reps = std::atoi(argv[5]);
+        std::mt19937 gen(12345);
+        std::cout << "n,flops,time_ms\n";
+        for (int n = nMin; n <= nMax; n += step) {
+            Matrix A = randomMatrix(n, gen);
+            Matrix B = randomMatrix(n, gen);
+            double best = 1e300;
+            unsigned long long flops = 0;
+            for (int k = 0; k < reps; ++k) {
+                g_flops = 0;
+                auto t0 = std::chrono::steady_clock::now();
+                Matrix C = multiplyBinet(A, B);
+                auto t1 = std::chrono::steady_clock::now();
+                flops = g_flops;
+                best = std::min(best, std::chrono::duration<double, std::milli>(t1 - t0).count());
+            }
+            std::cout << n << "," << flops << "," << std::fixed << std::setprecision(4) << best << std::endl;
+        }
+        return 0;
+    }
+
+    // TRYB RAPORTOWY 3:  binet.exe --example
+    // Mnozy stala macierz A = magic(4) przez B = A'/7 i wypisuje wynik C w
+    // formacie czytelnym dla Octave/MATLAB (load) - patrz skrypt compare.m.
+    // Linie zaczynajace sie od '%' sa komentarzami.
+    if (argc == 2 && std::string(argv[1]) == "--example") {
+        const double magic4[4][4] = {{16, 2, 3, 13}, {5, 11, 10, 8}, {9, 7, 6, 12}, {4, 14, 15, 1}};
+        Matrix A(4, 4), B(4, 4);
+        for (int i = 0; i < 4; ++i)
+            for (int j = 0; j < 4; ++j) {
+                A(i, j) = magic4[i][j];
+                B(i, j) = magic4[j][i] / 7.0;  // transpozycja podzielona przez 7
+            }
+        g_flops = 0;
+        Matrix C = multiplyBinet(A, B);
+        std::cout << "% Binet 4x4, liczba operacji = " << g_flops << "\n";
+        std::cout << std::setprecision(17);
+        for (int i = 0; i < 4; ++i) {
+            for (int j = 0; j < 4; ++j) std::cout << C(i, j) << (j < 3 ? " " : "\n");
+        }
+        return 0;
+    }
+
     // Rozmiary do przetestowania: z argumentow wiersza polecen albo domyslne
     // (celowo z nieparzystymi, zeby pokazac, ze algorytm dziala dla dowolnego n).
     std::vector<int> sizes;

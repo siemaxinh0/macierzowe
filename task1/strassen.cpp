@@ -66,6 +66,11 @@
 //   g++ -O2 -std=c++17 -o strassen.exe strassen.cpp
 //   strassen.exe              -> test dla domyslnej listy rozmiarow
 //   strassen.exe 5 16 100     -> test dla podanych rozmiarow n
+//
+// Tryby uzywane do sprawozdania (wynik w formacie CSV na stdout):
+//   strassen.exe --flops nMin nMax              -> liczba operacji ze wzoru (bez mnozenia)
+//   strassen.exe --time nMin nMax krok powt.    -> zmierzony czas i liczba operacji
+//   strassen.exe --example                      -> przyklad 4x4 (magic(4) * magic(4)'/7)
 // ============================================================================
 
 #include <algorithm>   // std::max
@@ -74,7 +79,9 @@
 #include <cstdlib>     // std::atoi
 #include <iomanip>     // formatowanie tabeli
 #include <iostream>
+#include <map>         // memoizacja w modelu liczby operacji
 #include <random>      // generator liczb losowych
+#include <string>
 #include <vector>
 
 // Dla macierzy o rozmiarze <= STRASSEN_CUTOFF przestajemy rekurencyjnie dzielic
@@ -273,7 +280,94 @@ double maxDifference(const Matrix& A, const Matrix& B) {
     return d;
 }
 
+// ----------------------------------------------------------------------------
+// MODEL LICZBY OPERACJI (dla raportu): ta sama rekurencja co multiplyStrassen,
+// ale tylko sumuje koszty zamiast mnozyc macierze. Pozwala policzyc liczbe
+// operacji dla duzych n bez wykonywania obliczen (wyniki identyczne z g_flops).
+//   - przypadek bazowy: n*n*(2n-1) operacji (klasyczne mnozenie),
+//   - n parzyste: 7*S(n/2) + 18*(n/2)^2   (10 dodawan wejsc + 8 skladania wyniku),
+//   - n nieparzyste (m = n-1): S(m) + koszt "cienkich" iloczynow i dodawan.
+// ----------------------------------------------------------------------------
+unsigned long long flopsModel(int n, std::map<int, unsigned long long>& memo) {
+    if (n <= STRASSEN_CUTOFF) return 1ULL * n * n * (2ULL * n - 1);
+    auto it = memo.find(n);
+    if (it != memo.end()) return it->second;
+
+    unsigned long long total;
+    if (n % 2 == 1) {
+        const unsigned long long m = n - 1;
+        total = flopsModel(n - 1, memo)  // rdzen A11*B11 (Strassen)
+              + m * m + m * m            // C11: iloczyn a12*b21 oraz dodawanie
+              + m * (2 * m - 1) + m + m  // C12: A11*b12, a12*b22, dodawanie
+              + m * (2 * m - 1) + m + m  // C21: a21*B11, a22*b21, dodawanie
+              + (2 * m - 1) + 1 + 1;     // C22: a21*b12, a22*b22, dodawanie
+    } else {
+        const unsigned long long h = n / 2;
+        total = 7 * flopsModel(n / 2, memo) + 18 * h * h;
+    }
+    memo[n] = total;
+    return total;
+}
+
 int main(int argc, char** argv) {
+    // TRYB RAPORTOWY 1:  strassen.exe --flops nMin nMax
+    // Wypisuje CSV "n,flops" ze wzoru rekurencyjnego (bez mnozenia macierzy).
+    if (argc == 4 && std::string(argv[1]) == "--flops") {
+        std::map<int, unsigned long long> memo;
+        std::cout << "n,flops\n";
+        for (int n = std::atoi(argv[2]); n <= std::atoi(argv[3]); ++n)
+            std::cout << n << "," << flopsModel(n, memo) << "\n";
+        return 0;
+    }
+
+    // TRYB RAPORTOWY 2:  strassen.exe --time nMin nMax krok powtorzenia
+    // Dla kazdego n wykonuje prawdziwe mnozenie, mierzy czas (minimum z kilku
+    // powtorzen) i wypisuje CSV "n,flops_zmierzone,czas_ms".
+    if (argc == 6 && std::string(argv[1]) == "--time") {
+        const int nMin = std::atoi(argv[2]), nMax = std::atoi(argv[3]);
+        const int step = std::atoi(argv[4]), reps = std::atoi(argv[5]);
+        std::mt19937 gen(12345);
+        std::cout << "n,flops,time_ms\n";
+        for (int n = nMin; n <= nMax; n += step) {
+            Matrix A = randomMatrix(n, gen);
+            Matrix B = randomMatrix(n, gen);
+            double best = 1e300;
+            unsigned long long flops = 0;
+            for (int k = 0; k < reps; ++k) {
+                g_flops = 0;
+                auto t0 = std::chrono::steady_clock::now();
+                Matrix C = multiplyStrassen(A, B);
+                auto t1 = std::chrono::steady_clock::now();
+                flops = g_flops;
+                best = std::min(best, std::chrono::duration<double, std::milli>(t1 - t0).count());
+            }
+            std::cout << n << "," << flops << "," << std::fixed << std::setprecision(4) << best << std::endl;
+        }
+        return 0;
+    }
+
+    // TRYB RAPORTOWY 3:  strassen.exe --example
+    // Mnozy stala macierz A = magic(4) przez B = A'/7 i wypisuje wynik C w
+    // formacie czytelnym dla Octave/MATLAB (load) - patrz skrypt compare.m.
+    // Linie zaczynajace sie od '%' sa komentarzami.
+    if (argc == 2 && std::string(argv[1]) == "--example") {
+        const double magic4[4][4] = {{16, 2, 3, 13}, {5, 11, 10, 8}, {9, 7, 6, 12}, {4, 14, 15, 1}};
+        Matrix A(4, 4), B(4, 4);
+        for (int i = 0; i < 4; ++i)
+            for (int j = 0; j < 4; ++j) {
+                A(i, j) = magic4[i][j];
+                B(i, j) = magic4[j][i] / 7.0;  // transpozycja podzielona przez 7
+            }
+        g_flops = 0;
+        Matrix C = multiplyStrassen(A, B);
+        std::cout << "% Strassen 4x4, liczba operacji = " << g_flops << "\n";
+        std::cout << std::setprecision(17);
+        for (int i = 0; i < 4; ++i) {
+            for (int j = 0; j < 4; ++j) std::cout << C(i, j) << (j < 3 ? " " : "\n");
+        }
+        return 0;
+    }
+
     // Rozmiary: z argumentow wiersza polecen albo domyslne (z nieparzystymi).
     std::vector<int> sizes;
     for (int i = 1; i < argc; ++i) sizes.push_back(std::atoi(argv[i]));
