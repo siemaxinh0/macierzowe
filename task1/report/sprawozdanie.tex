@@ -1,4 +1,4 @@
-\documentclass[10pt,a4paper]{article}
+\documentclass[11pt,a4paper]{article}
 
 % --- Pakiety ---------------------------------------------------------------
 \usepackage{iftex}
@@ -11,20 +11,33 @@
 \fi
 \usepackage[polish]{babel}
 \usepackage{xcolor}
-\usepackage[margin=1.9cm]{geometry}
-\usepackage{amsmath,amssymb,mathtools}
+\usepackage[a4paper,margin=2.3cm,headheight=14pt]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{listings}
 \usepackage{algorithm}
-\usepackage{algpseudocode}
-\usepackage[font=small,labelfont=bf,skip=3pt]{caption}
-\usepackage{enumitem}
+\usepackage[noEnd=true]{algpseudocodex}
+\usepackage[font=small,labelfont=normal]{caption}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
 \usepackage{microtype}
 
-\setlist{itemsep=1pt,topsep=2pt,parsep=0pt}
-\setlength{\parindent}{0pt}
-\setlength{\parskip}{3pt}
+% --- Układ strony: nagłówek po prawej, numer strony na dole -----------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[R]{\small Rekurencyjne algorytmy mnożenia macierzy}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\thepage}\renewcommand{\headrulewidth}{0pt}}
+
+% --- Akapity i nagłówki sekcji (pogrubione, bezszeryfowe) --------------------
+\setlength{\parindent}{1.5em}
+\setlength{\parskip}{2pt}
+\titleformat{\section}{\Large\bfseries\sffamily}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries\sffamily}{\thesubsection}{1em}{}
+\titlespacing*{\section}{0pt}{16pt}{8pt}
+\titlespacing*{\subsection}{0pt}{12pt}{6pt}
 \renewcommand{\arraystretch}{1.1}
 
 % Styl fragmentów kodu C++
@@ -39,108 +52,80 @@
   columns=fullflexible, keepspaces=true, showstringspaces=false
 }
 
-% Pseudokod: polskie słowa kluczowe
+% Pseudokod: polskie słowa kluczowe (jak we wzorcowym sprawozdaniu)
 \floatname{algorithm}{Algorytm}
-\algrenewcommand\algorithmicrequire{\textbf{Wejście:}}
-\algrenewcommand\algorithmicensure{\textbf{Wyjście:}}
-\algrenewcommand\algorithmicif{\textbf{jeżeli}}
-\algrenewcommand\algorithmicthen{\textbf{to}}
-\algrenewcommand\algorithmicelse{\textbf{w przeciwnym razie}}
-\algrenewcommand\algorithmicreturn{\textbf{zwróć}}
-\algrenewtext{EndIf}{\textbf{koniec jeżeli}}
-\algrenewtext{If}[1]{\textbf{jeżeli} #1 \textbf{to}}
-\algrenewtext{ElsIf}[1]{\textbf{w przeciwnym razie, jeżeli} #1 \textbf{to}}
-\algrenewtext{Else}{\textbf{w przeciwnym razie}}
-\algrenewtext{Return}{\textbf{zwróć}}
+\algrenewcommand\algorithmicprocedure{\textbf{Procedura}}
+\algrenewcommand\algorithmicif{\textbf{Jeżeli}}
+\algrenewcommand\algorithmicthen{\textbf{wykonaj}}
+\algrenewcommand\algorithmicelse{\textbf{W przeciwnym razie}}
+\algrenewcommand\algorithmicreturn{\textbf{Zwróć}}
 
-\title{\vspace{-1.2cm}\textbf{Rekurencyjne mnożenie macierzy:\\ metody Binét'a i Strassena}\vspace{-0.3cm}}
-\author{Imię Nazwisko (nr albumu) \quad\textbullet\quad Imię Nazwisko (nr albumu)}
-\date{\today}
+\newcommand{\Pomnoz}{\textsc{Pomnóż}}
 
 \begin{document}
-\maketitle
-\vspace{-0.6cm}
 
-\section{Cel i zakres}
-Zaimplementowano w C++ dwa rekurencyjne algorytmy mnożenia macierzy kwadratowych
-o \emph{dowolnym} rozmiarze $n\times n$ (nie tylko będącym potęgą dwójki): metodę Binét'a (8 mnożeń
-bloków) i metodę Strassena (7 mnożeń bloków). Macierze zawierają liczby losowe z rozkładu równomiernego
-na przedziale $[10^{-8}, 1)$. Zliczano liczbę operacji zmiennoprzecinkowych $(+,-,*,/)$ oraz mierzono czas
-działania. Źródła: \texttt{binet.cpp}, \texttt{strassen.cpp}; skrypty raportowe: \texttt{make\_plots.py},
-\texttt{compare.m}.
+% === STRONA TYTUŁOWA + SPIS TREŚCI ==========================================
+\thispagestyle{plain}
+\begin{center}
+\vspace*{3.5cm}
+% \includegraphics[width=6cm]{logo.png}  % (opcjonalnie) logo uczelni
+{\Large Rekurencyjne algorytmy mnożenia macierzy}\\[1.5em]
+Mateusz Majta, Maksymilian Siemek\\[1.2em]
+Algorytmy Macierzowe 2026/2027, grupa 2
+\end{center}
+\vspace{1.2cm}
+\tableofcontents
+\newpage
 
-\section{Pseudokod algorytmów rekurencyjnych}
-W obu metodach macierze dzielimy na cztery bloki $A=\begin{psmallmatrix}A_{11}&A_{12}\\A_{21}&A_{22}\end{psmallmatrix}$,
-analogicznie $B$ i $C=AB$.
+% === 1. WSTĘP ===============================================================
+\section{Wstęp}
+Celem ćwiczenia była implementacja i porównanie trzech rekurencyjnych algorytmów mnożenia macierzy:
+metody Binét'a, metody Strassena~[1] oraz metody Ladermana. Wszystkie trzy mnożą macierze kwadratowe
+$n\times n$ o \emph{dowolnym} rozmiarze (nie tylko będącym potęgą dwójki lub trójki), a macierze zawierają liczby losowe
+z rozkładu równomiernego na przedziale $[10^{-8}, 1)$.
+Razem ze sprawozdaniem zawarty jest kod w języku C++ zawierający implementację wszystkich algorytmów
+(\texttt{binet.cpp}, \texttt{strassen.cpp}, \texttt{laderman.cpp}) oraz skrypty służące do generowania
+wykresów (\texttt{make\_plots.py}) i do porównania wyników z Octave/MATLAB (\texttt{compare.m}).
 
-\begin{minipage}[t]{0.495\textwidth}
-\begin{algorithm}[H]
-\caption{\textsc{Binét}$(A,B)$ (\textsc{B} = wywołanie rekurencyjne)}
-\begin{algorithmic}[1]
-\Require $A$: $p\times q$, $B$: $q\times r$
-\Ensure $C=AB$: $p\times r$
-\If{$p=1$ lub $q=1$ lub $r=1$}
-  \State \Return \textsc{MnożenieKlasyczne}$(A,B)$
-\EndIf
-\State $p_h,q_h,r_h \gets \lceil p/2\rceil,\lceil q/2\rceil,\lceil r/2\rceil$
-\State podziel $A$ w punktach $(p_h,q_h)$, $B$ w $(q_h,r_h)$
-\State $C_{11}\gets \textsc{B}(A_{11},B_{11})+\textsc{B}(A_{12},B_{21})$
-\State $C_{12}\gets \textsc{B}(A_{11},B_{12})+\textsc{B}(A_{12},B_{22})$
-\State $C_{21}\gets \textsc{B}(A_{21},B_{11})+\textsc{B}(A_{22},B_{21})$
-\State $C_{22}\gets \textsc{B}(A_{21},B_{12})+\textsc{B}(A_{22},B_{22})$
-\State \Return $\begin{psmallmatrix}C_{11}&C_{12}\\C_{21}&C_{22}\end{psmallmatrix}$
-\end{algorithmic}
-\end{algorithm}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.495\textwidth}
-\begin{algorithm}[H]
-\caption{\textsc{Strassen}$(A,B)$, $n\times n$ (\textsc{S} = wywołanie rekurencyjne)}
-\begin{algorithmic}[1]
-\If{$n=1$} \State \Return $A\cdot B$ \EndIf
-\If{$n$ nieparzyste, $m=n-1$}
-  \State wydziel $A_{11}$ ($m{\times}m$), kolumnę $a_{12}$, wiersz $a_{21}$, liczbę $a_{22}$ (tak samo $B$)
-  \State $C_{11}\gets \textsc{S}(A_{11},B_{11})+a_{12}b_{21}$
-  \State $C_{12}\gets A_{11}b_{12}+a_{12}b_{22}$
-  \State $C_{21}\gets a_{21}B_{11}+a_{22}b_{21}$
-  \State $C_{22}\gets a_{21}b_{12}+a_{22}b_{22}$
-\Else
-  \State $M_1\gets \textsc{S}(A_{11}{+}A_{22},\,B_{11}{+}B_{22})$
-  \State $M_2\gets \textsc{S}(A_{21}{+}A_{22},\,B_{11})$
-  \State $M_3\gets \textsc{S}(A_{11},\,B_{12}{-}B_{22})$
-  \State $M_4\gets \textsc{S}(A_{22},\,B_{21}{-}B_{11})$
-  \State $M_5\gets \textsc{S}(A_{11}{+}A_{12},\,B_{22})$
-  \State $M_6\gets \textsc{S}(A_{21}{-}A_{11},\,B_{11}{+}B_{12})$
-  \State $M_7\gets \textsc{S}(A_{12}{-}A_{22},\,B_{21}{+}B_{22})$
-  \State $C_{11}\gets M_1{+}M_4{-}M_5{+}M_7$, \; $C_{12}\gets M_3{+}M_5$
-  \State $C_{21}\gets M_2{+}M_4$, \; $C_{22}\gets M_1{-}M_2{+}M_3{+}M_6$
-\EndIf
-\State \Return $C$ złożone z $C_{11},C_{12},C_{21},C_{22}$
-\end{algorithmic}
-\end{algorithm}
-\end{minipage}
+% === 2. SPECYFIKACJA NARZĘDZI I SPRZĘTU =====================================
+\section{Specyfikacja narzędzi i sprzętu}
+\textbf{Język nie jest interpretowany:} C++ jest kompilowany z góry do natywnego kodu maszynowego ARM64
+(Apple clang 21.0.0 wywoływany jako \texttt{g++}, flagi \texttt{-O2 -std=c++17}); powstały plik wykonywalny jest
+uruchamiany bezpośrednio przez procesor, bez interpretera i maszyny wirtualnej. Obliczenia były jednowątkowe.
+Obliczenia zostały dokonane na komputerze z procesorem Apple M1 Pro (8 rdzeni: 6 wydajnych i 2 energooszczędne),
+pamięcią RAM 16~GB (LPDDR5) i systemem macOS 26.5.
 
-\textbf{Dowolny rozmiar.} W metodzie Binét'a przy nieparzystych wymiarach bloki górne/lewe mają
-$\lceil\cdot/2\rceil$, a dolne/prawe $\lfloor\cdot/2\rfloor$ wierszy i kolumn, więc mnożymy macierze prostokątne
-(wzory na $C_{ij}$ pozostają poprawne). W metodzie Strassena dla nieparzystego $n$ „obieramy'' ostatni wiersz
-i kolumnę (\emph{dynamic peeling}); rdzeń $(n{-}1)\times(n{-}1)$ mnożymy rekurencyjnie, a cienkie iloczyny
-klasycznie. Macierzy nie dopełniamy zerami, dzięki czemu liczba operacji nie jest sztucznie zawyżona.
-Rekurencję prowadzimy do macierzy $1\times1$ (bez progu przełączenia na metodę klasyczną).
+Czas mierzono zegarem \texttt{std::chrono::steady\_clock} tylko dla samego mnożenia (bez generowania macierzy
+i weryfikacji): dla $n\le200$ jako minimum z 3~powtórzeń, dla $n>200$ jako pojedynczy pomiar. Wszystkie trzy programy
+uruchamiano kolejno, na tym samym komputerze, więc ich czasy są ze sobą porównywalne. Pomiary czasu wykonano dla
+$n=1,2,\dots,200$ oraz $n=250,300,\dots,1000$ (krok 50); liczbę operacji wyznaczono dla \emph{każdego}
+$n=1,\dots,1000$, korzystając z modelu rekurencyjnego (to samo drzewo wywołań co w algorytmie, ale bez mnożenia
+macierzy). Dla wszystkich zmierzonych $n$ model daje liczbę operacji identyczną z licznikiem w działającym programie.
+Maksymalny rozmiar, który udało się policzyć wszystkimi trzema metodami: $n=1000$.
 
-\section{Najważniejsze fragmenty kodu}
-Licznik operacji zwiększany jest tylko w dwóch miejscach: przy dodawaniu/odejmowaniu macierzy (1 operacja na element)
-oraz w mnożeniu klasycznym używanym w przypadku bazowym ($pqr$ mnożeń i $pr(q{-}1)$ dodawań).
+% === 3. ALGORYTMY ===========================================================
+\section{Algorytmy}
+Omawiane algorytmy polegają na zasadzie „dziel i rządź'', rekurencyjnie dzieląc macierze na podmacierze nazywane
+inaczej blokami. W klasycznej postaci przyjmują one ustalone rozmiary macierzy (parzyste dla metod Binét'a i Strassena,
+podzielne przez 3 dla metody Ladermana), co sprawia, że użycie ich w przypadkach ogólnych wymaga wprowadzenia kilku
+modyfikacji.
 
-\begin{lstlisting}
-static unsigned long long g_flops = 0;           // licznik operacji + - * /
-Matrix add(const Matrix& A, const Matrix& B) {   // sub() analogicznie
-    Matrix C(A.rows, A.cols);
-    for (size_t k = 0; k < C.data.size(); ++k) C.data[k] = A.data[k] + B.data[k];
-    g_flops += C.data.size();                    // 1 operacja na element
-    return C;
-}
-\end{lstlisting}
+\subsection{Modyfikacja algorytmów do mnożenia macierzy o dowolnych rozmiarach}
+Problem arbitralnych rozmiarów macierzy rozwiązaliśmy bez użycia tzw. „paddingu'' (wypełniania macierzy zerami),
+dzięki czemu liczba operacji nie jest sztucznie zawyżona.
+W metodzie Binét'a przy nieparzystych wymiarach bloki górne/lewe mają $\lceil\cdot/2\rceil$, a dolne/prawe
+$\lfloor\cdot/2\rfloor$ wierszy i kolumn, więc mnożymy macierze prostokątne $(p\times q)\cdot(q\times r)$, a wzory na
+bloki wyniku pozostają poprawne. W metodzie Strassena dla nieparzystego $n$ „obieramy'' ostatni wiersz i kolumnę
+(\emph{dynamic peeling}~[2]): rdzeń $(n{-}1)\times(n{-}1)$ mnożymy rekurencyjnie, a pozostałe, cienkie iloczyny
+klasycznie. W metodzie Ladermana stosujemy to samo obieranie, tylko odcinamy $r=n\bmod3\in\{1,2\}$ wierszy
+i kolumn, tak aby rdzeń $(n{-}r)\times(n{-}r)$ dzielił się przez 3.
+Rekurencję prowadzimy do najmniejszych możliwych bloków (bez progu przełączenia na metodę klasyczną):
+$1\times1$ u Binét'a i Strassena oraz $1\times1$ lub $2\times2$ u Ladermana.
+Na Rysunkach 1, 2, 3 znajdują się najważniejsze fragmenty kodu w języku C++ rozwiązujące te przypadki, a na
+Rysunku 4 sposób zliczania operacji zmiennoprzecinkowych.
 
-\textbf{Binét} (\texttt{binet.cpp}, fragment skrócony):
+\begin{figure}[H]
+\centering
 \begin{lstlisting}
 Matrix multiplyBinet(const Matrix& A, const Matrix& B) {
     const int p = A.rows, q = A.cols, r = B.cols;
@@ -156,8 +141,11 @@ Matrix multiplyBinet(const Matrix& A, const Matrix& B) {
     // ... sklejenie C11..C22 w macierz wynikowa p x r (placeBlock)
 }
 \end{lstlisting}
+\caption{Arbitralne rozmiary macierzy, metoda Binét'a (\texttt{binet.cpp}, fragment skrócony)}
+\end{figure}
 
-\textbf{Strassen} (\texttt{strassen.cpp}, fragment skrócony):
+\begin{figure}[H]
+\centering
 \begin{lstlisting}
 Matrix multiplyStrassen(const Matrix& A, const Matrix& B) {
     const int n = A.rows;
@@ -180,69 +168,310 @@ Matrix multiplyStrassen(const Matrix& A, const Matrix& B) {
     // ... sklejenie C11..C22 w macierz wynikowa n x n
 }
 \end{lstlisting}
+\caption{Arbitralne rozmiary macierzy, metoda Strassena (\texttt{strassen.cpp}, fragment skrócony)}
+\end{figure}
 
-\section{Środowisko pomiarowe}
-\textbf{Język nie jest interpretowany:} C++ jest kompilowany z góry do natywnego kodu maszynowego x86-64
-(\texttt{g++ 14.2.0}, MinGW-W64, flagi \texttt{-O2 -std=c++17}); powstały plik \texttt{.exe} jest wykonywany
-bezpośrednio przez procesor, bez interpretera i maszyny wirtualnej. Obliczenia były jednowątkowe.
-\textbf{Sprzęt:} procesor AMD Ryzen 7 7735HS (8 rdzeni / 16 wątków, taktowanie bazowe 3,2~GHz),
-pamięć RAM 31,2~GB DDR5 (4800~MT/s), system Windows 11. Czas mierzono zegarem \texttt{std::chrono::steady\_clock}
-tylko dla samego mnożenia (bez generowania macierzy i weryfikacji): dla $n\le200$ jako minimum z 3~powtórzeń,
-dla $n>200$ jako pojedynczy pomiar (programy uruchamiane kolejno; dla $n\le200$ oba programy liczyły równocześnie na osobnych rdzeniach). Pomiary czasu wykonano dla $n=1,2,\dots,200$ oraz $n=250,300,\dots,1000$ (krok 50);
-liczbę operacji wyznaczono dla \emph{każdego} $n=1,\dots,1000$, korzystając z modelu rekurencyjnego (to samo drzewo
-wywołań co w algorytmie, ale bez mnożenia macierzy). Dla wszystkich zmierzonych $n$ model daje liczbę operacji
-identyczną z licznikiem w działającym programie. Maksymalny rozmiar, który udało się policzyć obiema metodami: $n=1000$.
-
-\section{Wykresy}
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.86\textwidth]{fig_time.pdf}
-\caption{Czas działania obu metod rekurencyjnych w zależności od rozmiaru macierzy $n$.}
+\begin{lstlisting}
+Matrix combine(MatrixList plus, MatrixList minus = {}) {  // plus[0] + plus[1] + ... - minus[0] - ...
+    auto it = plus.begin();
+    Matrix C = *it;                                        // kopia pierwszego skladnika (bez operacji)
+    for (++it; it != plus.end(); ++it) { /* C += *it */ g_flops += C.data.size(); }
+    for (const Matrix& X : minus)      { /* C -= X   */ g_flops += C.data.size(); }
+    return C;
+}
+Matrix multiplyLaderman(const Matrix& A, const Matrix& B) {
+    const int n = A.rows;
+    if (n <= LADERMAN_CUTOFF) return multiplyNaive(A, B);    // CUTOFF = 2
+    const int r = n % 3;
+    if (r != 0) { /* obieranie r wierszy i kolumn - jak u Strassena, rdzen m = n - r */ }
+    const int h = n / 3;
+    // ... A11..A33, B11..B33 wycinane przez subMatrix (bloki h x h)
+    Matrix M1 = multiplyLaderman(combine({A11, A12, A13}, {A21, A22, A32, A33}), B22);
+    Matrix M2 = multiplyLaderman(combine({A11}, {A21}), combine({B22}, {B12}));
+    // ... M3..M23 analogicznie, wg wzorow (2)
+    Matrix C11 = combine({M6, M14, M19});
+    Matrix C12 = combine({M1, M4, M5, M6, M12, M14, M15});
+    // ... C13..C33 wg wzorow (3), sklejenie 9 blokow w macierz n x n
+}
+\end{lstlisting}
+\caption{Arbitralne rozmiary macierzy, metoda Ladermana (\texttt{laderman.cpp}, fragment skrócony). Sumy mają do
+7 bloków, dlatego funkcja \texttt{combine} przyjmuje listę bloków dodawanych i odejmowanych}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{lstlisting}
+static unsigned long long g_flops = 0;           // licznik operacji + - * /
+Matrix add(const Matrix& A, const Matrix& B) {   // sub() analogicznie
+    Matrix C(A.rows, A.cols);
+    for (size_t k = 0; k < C.data.size(); ++k) C.data[k] = A.data[k] + B.data[k];
+    g_flops += C.data.size();                    // 1 operacja na element
+    return C;
+}
+\end{lstlisting}
+\caption{Zliczanie operacji zmiennoprzecinkowych. Licznik rośnie tylko tutaj oraz w mnożeniu klasycznym
+(przypadek bazowy: $pqr$ mnożeń i $pr(q{-}1)$ dodawań); \texttt{combine} liczy się tak samo}
+\end{figure}
+
+\subsection{Metoda Binét'a}
+Mnożenie macierzy $A$ i $B$ metodą Binét'a odpowiada „naiwnemu'' sposobowi mnożenia macierzy. Polega ona na
+bezpośrednim pomnożeniu każdego wiersza bloków macierzy $A$ z każdą kolumną bloków macierzy $B$ (1):
+\begin{equation}
+C = AB =
+\begin{bmatrix}
+\begin{bmatrix}A_{11} & A_{12}\end{bmatrix}\begin{bmatrix}B_{11}\\B_{21}\end{bmatrix} &
+\begin{bmatrix}A_{11} & A_{12}\end{bmatrix}\begin{bmatrix}B_{12}\\B_{22}\end{bmatrix}\\[1ex]
+\begin{bmatrix}A_{21} & A_{22}\end{bmatrix}\begin{bmatrix}B_{11}\\B_{21}\end{bmatrix} &
+\begin{bmatrix}A_{21} & A_{22}\end{bmatrix}\begin{bmatrix}B_{12}\\B_{22}\end{bmatrix}
+\end{bmatrix}
+\end{equation}
+Algorytm ten zapisany w postaci rekurencyjnej procedury wygląda następująco (Algorytm~1):
+
+\begin{algorithm}[H]
+\caption{Rekurencyjne mnożenie macierzy metodą Binét'a}
+\begin{algorithmic}[1]
+\Procedure{\Pomnoz}{$A, B$} \Comment{$A$: $p\times q$, $B$: $q\times r$}
+  \If{$p=1$ lub $q=1$ lub $r=1$}
+    \State \Return \textsc{MnożenieKlasyczne}$(A,B)$
+  \EndIf
+  \State $p_h,\,q_h,\,r_h \gets \lceil p/2\rceil,\,\lceil q/2\rceil,\,\lceil r/2\rceil$ \Comment{punkty podziału}
+  \State podziel $A$ w punktach $(p_h,q_h)$, a $B$ w punktach $(q_h,r_h)$ na bloki $A[i][j]$, $B[i][j]$
+  \State $C[1][1] \gets \Pomnoz(A[1][1],B[1][1]) + \Pomnoz(A[1][2],B[2][1])$
+  \State $C[1][2] \gets \Pomnoz(A[1][1],B[1][2]) + \Pomnoz(A[1][2],B[2][2])$
+  \State $C[2][1] \gets \Pomnoz(A[2][1],B[1][1]) + \Pomnoz(A[2][2],B[2][1])$
+  \State $C[2][2] \gets \Pomnoz(A[2][1],B[1][2]) + \Pomnoz(A[2][2],B[2][2])$
+  \State \Return $C$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+Algorytm ten ma złożoność obliczeniową $O(n^3)$. Dokładniej, dla $n=2^k$ liczba operacji $f_k$ spełnia
+$f_k=8f_{k-1}+4^k$ (osiem mnożeń bloków oraz cztery dodawania bloków $2^{k-1}\times2^{k-1}$) i $f_0=1$.
+
+\begin{proof}
+Rozwiązanie równania jednorodnego to $c\cdot8^k$. Rozwiązania szczególnego szukamy w postaci $a\cdot4^k$:
+$a4^k=8a4^{k-1}+4^k$, skąd $a=-1$. Z warunku $f_0=1$ mamy $c=2$, zatem
+$f_k=2\cdot8^k-4^k$, czyli dla $n=2^k$: $f(n)=2n^3-n^2$. Zgadza się to z danymi dla każdego $n=1,\dots,1000$
+(także nieparzystych).
+\end{proof}
+
+\clearpage
+\subsection{Metoda Strassena}
+Metoda Strassena~[1] dokonuje optymalizacji nad metodą Binét'a, zmniejszając liczbę mnożeń bloków z~8 do~7 kosztem
+zwiększenia liczby dodawań. Dokonywane jest to poprzez wprowadzenie 7 zmiennych pomocniczych $M_1,\dots,M_7$.
+Pseudokod algorytmu Strassena wygląda następująco (Algorytm~2):
+
+\begin{algorithm}[H]
+\caption{Rekurencyjne mnożenie macierzy metodą Strassena}
+\begin{algorithmic}[1]
+\Procedure{\Pomnoz}{$A, B$} \Comment{$A$, $B$: $n\times n$}
+  \If{$n=1$}
+    \State \Return $AB$
+  \EndIf
+  \If{$n$ jest nieparzyste} \Comment{obieranie, $m=n-1$}
+    \State wydziel $A[1][1]$ ($m{\times}m$), kolumnę $a_{12}$, wiersz $a_{21}$ i liczbę $a_{22}$ (tak samo $B$)
+    \State $C[1][1] \gets \Pomnoz(A[1][1],B[1][1]) + a_{12}b_{21}$
+    \State $C[1][2] \gets A[1][1]\,b_{12} + a_{12}b_{22}$
+    \State $C[2][1] \gets a_{21}B[1][1] + a_{22}b_{21}$
+    \State $C[2][2] \gets a_{21}b_{12} + a_{22}b_{22}$
+    \State \Return $C$
+  \EndIf
+  \State $M_1 \gets \Pomnoz(A[1][1] + A[2][2],\; B[1][1] + B[2][2])$
+  \State $M_2 \gets \Pomnoz(A[2][1] + A[2][2],\; B[1][1])$
+  \State $M_3 \gets \Pomnoz(A[1][1],\; B[1][2] - B[2][2])$
+  \State $M_4 \gets \Pomnoz(A[2][2],\; B[2][1] - B[1][1])$
+  \State $M_5 \gets \Pomnoz(A[1][1] + A[1][2],\; B[2][2])$
+  \State $M_6 \gets \Pomnoz(A[2][1] - A[1][1],\; B[1][1] + B[1][2])$
+  \State $M_7 \gets \Pomnoz(A[1][2] - A[2][2],\; B[2][1] + B[2][2])$
+  \State $C[1][1] \gets M_1 + M_4 - M_5 + M_7$
+  \State $C[1][2] \gets M_3 + M_5$
+  \State $C[2][1] \gets M_2 + M_4$
+  \State $C[2][2] \gets M_1 - M_2 + M_3 + M_6$
+  \State \Return $C$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+Algorytm ten ma złożoność obliczeniową $\approx O(n^{2{,}807})$. Dla $n=2^k$ liczba operacji spełnia
+$f_k=7f_{k-1}+18\cdot4^{k-1}$ (siedem mnożeń bloków, 10 dodawań/odejmowań argumentów i 8 przy składaniu wyniku,
+każde na blokach $2^{k-1}\times2^{k-1}$) oraz $f_0=1$.
+
+\begin{proof}
+Rozwiązanie równania jednorodnego to $c\cdot7^k$. Rozwiązania szczególnego szukamy w postaci $a\cdot4^k$:
+$a4^k=7a4^{k-1}+18\cdot4^{k-1}$, skąd $a=-6$. Z $f_0=1$ mamy $c=7$, więc $f_k=7\cdot7^k-6\cdot4^k$,
+czyli dla $n=2^k$: $f(n)=7\,n^{\log_2 7}-6\,n^2$, a stąd $f(n)=O(n^{\log_2 7})\approx O(n^{2{,}807})$
+(sprawdzone dla $k=0,\dots,9$; np.\ $n=4$: 247 operacji). Obieranie dla nieparzystego $n$ kosztuje tylko $O(n^2)$ na
+poziom, więc nie zmienia rzędu złożoności.
+\end{proof}
+
+\subsection{Metoda Ladermana}
+W metodzie Ladermana dzielimy $A$, $B$ i $C$ na $3\times3$ bloki $A_{ij}$, $B_{ij}$, $C_{ij}$ ($i,j=1,2,3$)
+o rozmiarze $h=n/3$. Zamiast 27 iloczynów bloków (jak w podejściu klasycznym) wystarczą 23:
+{\small
+\begin{equation}\label{eq:laderman-m}
+\begin{aligned}
+M_{1}  &= (A_{11}{+}A_{12}{+}A_{13}{-}A_{21}{-}A_{22}{-}A_{32}{-}A_{33})\,B_{22} &
+M_{2}  &= (A_{11}{-}A_{21})(B_{22}{-}B_{12}) \\
+M_{3}  &= A_{22}\,(B_{12}{+}B_{21}{+}B_{33}{-}B_{11}{-}B_{22}{-}B_{23}{-}B_{31}) &
+M_{4}  &= (A_{21}{+}A_{22}{-}A_{11})(B_{11}{+}B_{22}{-}B_{12}) \\
+M_{5}  &= (A_{21}{+}A_{22})(B_{12}{-}B_{11}) &
+M_{6}  &= A_{11}B_{11} \\
+M_{7}  &= (A_{31}{+}A_{32}{-}A_{11})(B_{11}{+}B_{23}{-}B_{13}) &
+M_{8}  &= (A_{31}{-}A_{11})(B_{13}{-}B_{23}) \\
+M_{9}  &= (A_{31}{+}A_{32})(B_{13}{-}B_{11}) &
+M_{10} &= (A_{11}{+}A_{12}{+}A_{13}{-}A_{22}{-}A_{23}{-}A_{31}{-}A_{32})\,B_{23} \\
+M_{11} &= A_{32}\,(B_{13}{+}B_{21}{+}B_{32}{-}B_{11}{-}B_{22}{-}B_{23}{-}B_{31}) &
+M_{12} &= (A_{32}{+}A_{33}{-}A_{13})(B_{22}{+}B_{31}{-}B_{32}) \\
+M_{13} &= (A_{13}{-}A_{33})(B_{22}{-}B_{32}) &
+M_{14} &= A_{13}B_{31} \\
+M_{15} &= (A_{32}{+}A_{33})(B_{32}{-}B_{31}) &
+M_{16} &= (A_{22}{+}A_{23}{-}A_{13})(B_{23}{+}B_{31}{-}B_{33}) \\
+M_{17} &= (A_{13}{-}A_{23})(B_{23}{-}B_{33}) &
+M_{18} &= (A_{22}{+}A_{23})(B_{33}{-}B_{31}) \\
+M_{19} &= A_{12}B_{21},\quad M_{20} = A_{23}B_{32},\quad M_{21} = A_{21}B_{13} &
+M_{22} &= A_{31}B_{12},\quad M_{23} = A_{33}B_{33}
+\end{aligned}
+\end{equation}
+\begin{equation}\label{eq:laderman-c}
+\begin{aligned}
+C_{11} &= M_6{+}M_{14}{+}M_{19} &
+C_{12} &= M_1{+}M_4{+}M_5{+}M_6{+}M_{12}{+}M_{14}{+}M_{15} \\
+C_{13} &= M_6{+}M_7{+}M_9{+}M_{10}{+}M_{14}{+}M_{16}{+}M_{18} &
+C_{21} &= M_2{+}M_3{+}M_4{+}M_6{+}M_{14}{+}M_{16}{+}M_{17} \\
+C_{22} &= M_2{+}M_4{+}M_5{+}M_6{+}M_{20} &
+C_{23} &= M_{14}{+}M_{16}{+}M_{17}{+}M_{18}{+}M_{21} \\
+C_{31} &= M_6{+}M_7{+}M_8{+}M_{11}{+}M_{12}{+}M_{13}{+}M_{14} &
+C_{32} &= M_{12}{+}M_{13}{+}M_{14}{+}M_{15}{+}M_{22} \\
+C_{33} &= M_6{+}M_7{+}M_8{+}M_9{+}M_{23}
+\end{aligned}
+\end{equation}
+}%
+Na jednym poziomie rekurencji są więc 23 mnożenia bloków oraz $56+42=98$ dodawań/odejmowań bloków
+(w każdej sumie pierwszy składnik jest dodatni, więc nie ma osobnej operacji negacji).
+
+\begin{algorithm}[H]
+\caption{Rekurencyjne mnożenie macierzy metodą Ladermana}
+\begin{algorithmic}[1]
+\Procedure{\Pomnoz}{$A, B$} \Comment{$A$, $B$: $n\times n$}
+  \If{$n\le2$} \Comment{$2\times2$ nie da się podzielić na $3\times3$ bloki}
+    \State \Return \textsc{MnożenieKlasyczne}$(A,B)$
+  \EndIf
+  \State $r\gets n \bmod 3$
+  \If{$r\ne0$, $m=n-r$}
+    \State wydziel $A_{11}$ ($m{\times}m$), paski $a_{12}$ ($m{\times}r$), $a_{21}$ ($r{\times}m$), blok $a_{22}$ ($r{\times}r$) (tak samo $B$)
+    \State $C_{11}\gets \Pomnoz(A_{11},B_{11})+a_{12}b_{21}$, \; $C_{12}\gets A_{11}b_{12}+a_{12}b_{22}$
+    \State $C_{21}\gets a_{21}B_{11}+a_{22}b_{21}$, \; $C_{22}\gets a_{21}b_{12}+a_{22}b_{22}$
+  \Else
+    \State podziel $A$ i $B$ na $3\times3$ bloki o rozmiarze $h=n/3$
+    \State $M_i\gets\Pomnoz(\cdot,\cdot)$ dla $i=1,\dots,23$ według \eqref{eq:laderman-m}
+    \State $C_{ij}$ ze wzorów \eqref{eq:laderman-c}
+  \EndIf
+  \State \Return $C$ złożone z bloków $C_{ij}$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+Laderman: $L(n)=23L(n/3)+98(n/3)^2$, więc $L(n)=\Theta(n^{\log_3 23})\approx\Theta(n^{2{,}854})$; dla $n=3^k$
+dokładnie $L(n)=8\,n^{\log_3 23}-7\,n^2=8\cdot23^k-7\cdot9^k$ (sprawdzone dla $k=0,\dots,6$; np.\ $n=3$: 121 operacji).
+Obieranie przy $n\not\equiv0\pmod 3$ kosztuje tylko $O(n^2)$, więc nie zmienia rzędu złożoności.
+
+% === 4. PORÓWNANIE ALGORYTMÓW ===============================================
+\clearpage
+\section{Porównanie algorytmów}
+Dokonaliśmy porównania algorytmów pod względem liczby wykonywanych operacji zmiennoprzecinkowych $(+,-,*,/)$
+oraz czasu wykonania, zwiększając rozmiary mnożonych macierzy do $n=1000$.
+Rysunek~5 zawiera porównanie czasu działania, a Rysunek~6 liczby operacji wszystkich trzech metod.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.86\textwidth]{data_mateusz/fig_time.pdf}
+\caption{Czas działania trzech metod rekurencyjnych w zależności od rozmiaru macierzy $n$}
 \label{fig:time}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.78\textwidth]{fig_flops.pdf}
-\caption{Liczba operacji zmiennoprzecinkowych $(+,-,*,/)$ w zależności od $n$, $n=1,\dots,1000$.}
+\includegraphics[width=0.78\textwidth]{data_mateusz/fig_flops.pdf}
+\caption{Liczba operacji zmiennoprzecinkowych $(+,-,*,/)$ w zależności od $n$, $n=1,\dots,1000$}
 \label{fig:flops}
 \end{figure}
 
-\textbf{Komentarz.} Liczba operacji w metodzie Binét'a wynosi dokładnie $2n^3-n^2$ (dla $n=1000$:
+\subsection{Liczba operacji}
+Liczba operacji w metodzie Binét'a wynosi dokładnie $2n^3-n^2$ (dla $n=1000$:
 $1\,999\,000\,000$), czyli tyle samo co w algorytmie klasycznym. Strassen dla małych $n$ wykonuje \emph{więcej}
 operacji (1,92$\times$ dla $n=16$, 1,01$\times$ dla $n=100$), bo rekurencja aż do macierzy $1\times1$ generuje
 wiele dodawań macierzy; dla $n\ge 536$ ma już zawsze mniej operacji niż Binét (dla $n=1000$: $1\,199\,169\,602$,
 czyli 60\% operacji Binét'a). Wykres Strassena jest „schodkowy'': tuż po przekroczeniu potęgi dwójki
 (np. $n=511\to512$: z $1{,}83\cdot10^{8}$ do $2{,}81\cdot10^{8}$ operacji) rekurencja schodzi o jeden poziom głębiej.
-Czas działania zależy nie tylko od liczby operacji, ale też od kopiowania i alokacji macierzy tymczasowych oraz
-od pamięci podręcznej -- stąd skoki na rys.~\ref{fig:time}. Dla $n=1000$ Strassen potrzebuje ok.\ 39~s, a Binét
-ok.\ 258~s (6,6 razy dłużej), mimo że liczby operacji różnią się tylko 1,7 raza: Binét tworzy więcej macierzy
-tymczasowych (8 wywołań rekurencyjnych na poziom zamiast 7).
 
-\section{Oszacowanie złożoności obliczeniowej}
-\textbf{Teoretycznie.} Binét: $T(n)=8T(n/2)+\Theta(n^2)$, więc z twierdzenia o rekurencji uniwersalnej
-$T(n)=\Theta(n^{\log_2 8})=\Theta(n^3)$; dokładnie $2n^3-n^2$ operacji (zgodnie z danymi dla każdego
-$n=1,\dots,1000$). Strassen: $S(n)=7S(n/2)+18(n/2)^2$, więc $S(n)=\Theta(n^{\log_2 7})\approx\Theta(n^{2{,}807})$;
-dla $n=2^k$ dokładnie $S(n)=7\,n^{\log_2 7}-6\,n^2$ (sprawdzone dla $k=0,\dots,9$; np. $n=4$: 247 operacji).
+Laderman przy rekurencji do najmniejszych bloków wykonuje \emph{więcej} operacji niż Strassen dla wszystkich
+$n>161$ (do $2{,}27\times$ więcej; mniej tylko w krótkich przedziałach tuż za potęgami dwójki, gdzie Strassen
+robi skok). Od Binét'a jest tańszy tylko dla 303 spośród $n=1,\dots,1000$ (pierwszy raz dla $n=219$); dla $n=1000$
+wykonuje $2\,032\,501\,040$ operacji, czyli $1{,}02\times$ tyle co Binét i $1{,}69\times$ tyle co Strassen.
+Dla czystych potęg trójki Laderman ma $8\cdot23^k$ wobec $2\cdot27^k$ u Binét'a, więc liczbą operacji wygrywa
+z nim dopiero od $n=3^9=19\,683$. Schodki wykresu Ladermana wypadają przy potęgach trójki
+(np. $n=728\to729$).
 
-\textbf{Eksperymentalnie} (rys.~\ref{fig:loglog}): dopasowanie prostej do danych w skali log-log daje wykładnik
-$\alpha$ w zależności $\sim n^{\alpha}$.
-Dla liczby operacji: Binét $\alpha=3{,}00$, Strassen $\alpha=2{,}80$ ($n\ge16$, wszystkie $n$; dla samych $n=2^k$
-wychodzi $2{,}87$, nieco więcej niż $2{,}807$, bo dla małych $n$ ważny jest składnik $-6n^2$).
-Dla czasu ($n\ge50$): Binét $\alpha=3{,}16$, Strassen $\alpha=2{,}85$. Czas rośnie nieco szybciej niż liczba operacji
-ze względu na efekty pamięci. \textbf{Wniosek:} Binét ma złożoność $O(n^3)$, Strassen $O(n^{\log_2 7})\approx O(n^{2{,}81})$;
-przewaga Strassena rośnie z $n$, ale przy rekurencji do $1\times1$ ujawnia się dopiero dla $n$ rzędu kilkuset.
+\subsection{Czas działania}
+Czas działania (rys.~\ref{fig:time}) prawie nie zależy od liczby operacji
+arytmetycznych, tylko od liczby \emph{wywołań rekurencyjnych}. Każde wywołanie kopiuje bloki i alokuje macierze
+tymczasowe, co kosztuje 70--170~ns, dużo więcej niż pojedyncze $+$ lub $*$. Współczynnik korelacji
+$\log(\text{czas})$ z $\log(\text{liczba wywołań})$ dla $n\ge250$ wynosi $1{,}00$ (Binét), $0{,}99$ (Strassen)
+i $0{,}99$ (Laderman). Dla $n=1000$:
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+metoda & liczba operacji & liczba wywołań rekurencyjnych & czas \\
+\midrule
+Binét    & $1{,}999\cdot10^{9}$ & $1{,}08\cdot10^{9}$ & 73,0~s \\
+Strassen & $1{,}199\cdot10^{9}$ & $5{,}38\cdot10^{7}$ & 8,9~s \\
+Laderman & $2{,}033\cdot10^{9}$ & $1{,}61\cdot10^{8}$ & 18,0~s \\
+\bottomrule
+\end{tabular}
+\end{center}
+Binét i Laderman wykonują prawie tyle samo operacji, ale Laderman jest 4 razy szybszy, bo dzieli macierz przez 3,
+a obierane paski mnoży jednym wywołaniem klasycznym. Ma więc mniej poziomów rekurencji i mniej wywołań.
+Najlepiej widać to przy skoku $n=700\to750$: liczba wywołań Ladermana rośnie z $7{,}0\cdot10^{6}$ do
+$1{,}55\cdot10^{8}$ (o jeden poziom rekurencji więcej), a czas z 1,15~s do 13,8~s. Dla $n\le700$ Laderman
+jest najszybszy w większości punktów pomiarowych (np.\ dla $n=200$: 48~ms wobec 170~ms Strassena i 384~ms
+Binét'a), mimo że wykonuje najwięcej operacji. Wyjątkiem są przedziały tuż za potęgami trójki
+(np.\ $n=81,\dots,127$ i $n=250$), gdzie wygrywa Strassen.
+
+\subsection{Oszacowanie złożoności obliczeniowej}
+Teoretyczne złożoności wyprowadzono w rozdziale 3: $O(n^3)$ dla Binét'a, $O(n^{\log_2 7})\approx O(n^{2{,}807})$
+dla Strassena i $O(n^{\log_3 23})\approx O(n^{2{,}854})$ dla Ladermana. Sprawdzamy je eksperymentalnie
+(rys.~\ref{fig:loglog}): dopasowanie prostej do danych w skali log-log daje wykładnik $\alpha$ w zależności
+$\sim n^{\alpha}$.
+
+Dla liczby operacji ($n\ge16$, wszystkie $n$): Binét $\alpha=3{,}00$, Strassen $\alpha=2{,}80$, Laderman $\alpha=2{,}91$.
+Dla samych $n=2^k$ Strassen daje $2{,}87$, a dla samych $n=3^k$ Laderman daje $2{,}88$. To nieco więcej niż teoretyczne
+$2{,}807$ i $2{,}854$, bo dla małych $n$ ważne są składniki $-6n^2$ i $-7n^2$.
+Dla czasu ($n\ge50$): Binét $\alpha=2{,}79$, Strassen $\alpha=2{,}76$, Laderman $\alpha=2{,}89$. Dla Binét'a przy
+$n\ge250$ wychodzi $2{,}98$, zgodnie z teorią. U Strassena i Ladermana czas rośnie schodkowo (skoki przy potęgach
+2 i 3), więc nachylenie wyznaczone z czasu silnie zależy od wybranego zakresu $n$. Wiarygodną miarą złożoności
+jest tu liczba operacji, a nie czas.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.86\textwidth]{fig_loglog.pdf}
-\caption{Wykresy w skali log-log; nachylenie dopasowanej prostej oznacza wykładnik $\alpha$ w zależności $\sim n^{\alpha}$.}
+\includegraphics[width=0.86\textwidth]{data_mateusz/fig_loglog.pdf}
+\caption{Wykresy w skali log-log; nachylenie dopasowanej prostej oznacza wykładnik $\alpha$ w zależności $\sim n^{\alpha}$}
 \label{fig:loglog}
 \end{figure}
 
-\section{Przykład $4\times4$ -- porównanie z Octave/MATLAB}
-Do porównania wybrano $A=\texttt{magic(4)}$, $B=A^{T}/7$ (te same macierze są zaszyte w trybie
-\texttt{--example} obu programów). Skrypt \texttt{compare.m} wczytuje wyniki programów C++ i porównuje je z $A*B$
+% minipage nie pozwala rozciąć akapitu między stronami (unikamy osieroconych linii)
+\noindent\begin{minipage}{\textwidth}
+\textbf{Wniosek:} Binét ma złożoność $O(n^3)$, Strassen $O(n^{\log_2 7})\approx O(n^{2{,}81})$, a Laderman
+$O(n^{\log_3 23})\approx O(n^{2{,}85})$. Asymptotycznie Laderman jest więc lepszy od Binét'a, ale gorszy od Strassena.
+Przy rekurencji do najmniejszych bloków przewaga Strassena nad Binét'em ujawnia się dla $n$ rzędu kilkuset,
+a Ladermana dopiero dla $n$ rzędu $2\cdot10^4$.
+\end{minipage}
+
+\subsection{Weryfikacja poprawności: przykład $4\times4$}
+Do porównania z Octave/MATLAB wybrano $A=\texttt{magic(4)}$, $B=A^{T}/7$ (te same macierze są zaszyte w trybie
+\texttt{--example} wszystkich programów). U Ladermana $n=4$ daje jedno obieranie ($r=1$) i jeden krok
+właściwego algorytmu na rdzeniu $3\times3$. Skrypt \texttt{compare.m} wczytuje wyniki programów C++ i porównuje je z $A*B$
 w Octave/MATLAB. Wynik referencyjny:
 \[
 C_{\mathrm{ref}} = A B \approx
@@ -260,12 +489,21 @@ metoda & liczba operacji & $\max|C-C_{\mathrm{ref}}|$ \\
 \midrule
 Binét & 112 $(=2\cdot4^3-4^2)$ & $7{,}1\cdot10^{-15}$ \\
 Strassen & 247 $(=7\cdot7^2-6\cdot4^2)$ & $1{,}4\cdot10^{-14}$ \\
+Laderman & 188 $(=121+67)$ & $7{,}1\cdot10^{-15}$ \\
 \bottomrule
 \end{tabular}
 \end{center}
-Obie metody dają wynik zgodny z mnożeniem wbudowanym z dokładnością do błędów zaokrągleń (rzędu $10^{-14}$);
-Strassen ma nieco większy błąd, bo wykonuje więcej dodawań/odejmowań w innej kolejności.
+Wszystkie metody dają wynik zgodny z mnożeniem wbudowanym z dokładnością do błędów zaokrągleń (rzędu $10^{-14}$);
+Strassen ma nieco większy błąd, bo wykonuje więcej dodawań/odejmowań w innej kolejności. U Ladermana 121 operacji
+($=8\cdot23-7\cdot9$) przypada na rdzeń $3\times3$, a 67 na cienkie iloczyny przy obieraniu.
 % UWAGA: wartości referencyjne w tej wersji wyznaczono równoważnym wywołaniem A @ B w NumPy.
-% Po uruchomieniu compare.m w Octave/MATLAB sprawdź, czy błędy w tabeli się zgadzają.
+% Po uruchomieniu compare.m w Octave/MATLAB (dataDir = 'data_mateusz'; compare) sprawdź, czy błędy w tabeli się zgadzają.
+
+% === LITERATURA =============================================================
+\begin{thebibliography}{9}
+\bibitem{strassen} V.~Strassen, \emph{Gaussian elimination is not optimal}, Numerische Mathematik 13 (1969), s.~354--356.
+\bibitem{peeling} S.~Huss-Lederman, E.~M.~Jacobson, J.~R.~Johnson, A.~Tsao, T.~Turnbull,
+\emph{Implementation of Strassen's algorithm for matrix multiplication}, Supercomputing '96 (1996).
+\end{thebibliography}
 
 \end{document}
