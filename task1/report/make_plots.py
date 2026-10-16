@@ -1,8 +1,15 @@
 ﻿"""Generuje wykresy do sprawozdania z plików CSV w folderze data/.
 
-Uruchomienie (z folderu task1/report):  python make_plots.py
+Uruchomienie (z folderu task1/report):  python make_plots.py [katalog_danych]
+  python make_plots.py               -> dane z data/, wykresy do report/ (jak dotąd)
+  python make_plots.py data_mateusz  -> dane z data_mateusz/, wykresy do data_mateusz/
 Wynik: fig_time.pdf, fig_flops.pdf, fig_loglog.pdf oraz statystyki na stdout.
+Rysowane są te algorytmy (binet, strassen, laderman), dla których w katalogu
+danych jest plik <alg>-flops.csv.
 """
+import os
+import sys
+
 import numpy as np
 import matplotlib
 
@@ -13,9 +20,14 @@ plt.rcParams.update({"font.size": 8, "axes.grid": True, "grid.alpha": 0.3,
                      "legend.fontsize": 8, "figure.dpi": 150})
 
 
+DATA = sys.argv[1].rstrip("/") if len(sys.argv) > 1 else "data"
+OUT = "." if DATA == "data" else DATA  # domyślnie wykresy obok sprawozdania.tex
+ALGS = [a for a in ("binet", "strassen", "laderman") if os.path.exists(f"{DATA}/{a}-flops.csv")]
+
+
 def load(name):
     """Wczytuje CSV (nagłówek w pierwszej linii) jako tablicę numpy."""
-    return np.genfromtxt(f"data/{name}", delimiter=",", names=True)
+    return np.genfromtxt(f"{DATA}/{name}", delimiter=",", names=True)
 
 
 def load_time(alg):
@@ -24,10 +36,10 @@ def load_time(alg):
     return np.concatenate([a, b])
 
 
-flops = {alg: load(f"{alg}-flops.csv") for alg in ("binet", "strassen")}
-timing = {alg: load_time(alg) for alg in ("binet", "strassen")}
-label = {"binet": "Binét", "strassen": "Strassen"}
-color = {"binet": "tab:blue", "strassen": "tab:red"}
+flops = {alg: load(f"{alg}-flops.csv") for alg in ALGS}
+timing = {alg: load_time(alg) for alg in ALGS}
+label = {"binet": "Binét", "strassen": "Strassen", "laderman": "Laderman"}
+color = {"binet": "tab:blue", "strassen": "tab:red", "laderman": "tab:green"}
 
 # --- Kontrola: model liczby operacji == licznik zmierzony w czasie działania ---
 for alg in flops:
@@ -44,10 +56,15 @@ for k in range(0, 10):  # Strassen dla n = 2^k: 7*7^k - 6*4^k
     n2 = 2 ** k
     assert int(flops["strassen"]["flops"][n2 - 1]) == 7 * 7 ** k - 6 * 4 ** k, f"Strassen k={k}"
 print("Kontrola: Strassen(2^k) = 7*7^k - 6*4^k dla k = 0..9.")
+if "laderman" in flops:
+    for k in range(0, 7):  # Laderman dla n = 3^k: 8*23^k - 7*9^k
+        n3 = 3 ** k
+        assert int(flops["laderman"]["flops"][n3 - 1]) == 8 * 23 ** k - 7 * 9 ** k, f"Laderman k={k}"
+    print("Kontrola: Laderman(3^k) = 8*23^k - 7*9^k dla k = 0..6.")
 
 # --- Wykres 1: czas działania (lewy panel: n<=200, prawy: cały zakres) ---
 fig, axs = plt.subplots(1, 2, figsize=(5.6, 2.5))
-for alg in ("binet", "strassen"):
+for alg in ALGS:
     t = timing[alg]
     m = t["n"] <= 200
     axs[0].plot(t["n"][m], t["time_ms"][m], "-", lw=1, color=color[alg], label=label[alg])
@@ -60,17 +77,17 @@ axs[1].set_ylabel("czas działania [s]")
 axs[1].set_title("$n = 1,\\ldots,1000$", fontsize=8)
 axs[0].legend()
 fig.tight_layout()
-fig.savefig("fig_time.pdf")
+fig.savefig(f"{OUT}/fig_time.pdf")
 
 # --- Wykres 2: liczba operacji zmiennoprzecinkowych ---
 fig, ax = plt.subplots(figsize=(5.2, 2.5))
-for alg in ("binet", "strassen"):
+for alg in ALGS:
     ax.plot(flops[alg]["n"], flops[alg]["flops"], lw=1, color=color[alg], label=label[alg])
 ax.set_xlabel("rozmiar macierzy $n$")
 ax.set_ylabel("liczba operacji $+-*/$")
 ax.legend()
 fig.tight_layout()
-fig.savefig("fig_flops.pdf")
+fig.savefig(f"{OUT}/fig_flops.pdf")
 
 
 def fit(x, y):
@@ -82,7 +99,7 @@ def fit(x, y):
 # --- Wykres 3: skala log-log do oszacowania złożoności ---
 fig, axs = plt.subplots(1, 2, figsize=(5.6, 2.4))
 stats = {}
-for alg in ("binet", "strassen"):
+for alg in ALGS:
     f = flops[alg]
     m = f["n"] >= 16
     p_f = fit(f["n"][m], f["flops"][m])
@@ -104,7 +121,7 @@ axs[1].set_title("czas działania", fontsize=8)
 for a in axs:
     a.legend(fontsize=6, loc="upper left")
 fig.tight_layout()
-fig.savefig("fig_loglog.pdf")
+fig.savefig(f"{OUT}/fig_loglog.pdf")
 
 # --- Statystyki do tekstu sprawozdania ---
 print("\nNachylenia log-log (flops dla n>=16, czas dla n>=50):")
@@ -129,8 +146,22 @@ print("Liczba n (1..1000) z Strassen < Binet:", int(diff.sum()))
 last_worse = int(flops["binet"]["n"][~diff].max())
 print("Ostatnie n z Strassen >= Binet:", last_worse)
 
+if "laderman" in flops:
+    # Laderman tylko dla potęg trójki (czysta rekurencja, bez obierania)
+    n3 = 3 ** np.arange(2, 7)
+    print(f"\n  laderman (n=3^k, k=2..6) flops: {fit(n3, flops['laderman']['flops'][n3 - 1]):.3f}"
+          f"   (teoria: log3(23) = {np.log(23) / np.log(3):.3f})")
+    print("\nWybrane wartości (n, laderman flops, stosunki L/B i L/S):")
+    for n in (9, 27, 81, 100, 243, 500, 729, 1000):
+        b, s, lad = (flops[a]["flops"][n - 1] for a in ("binet", "strassen", "laderman"))
+        print(f"  n={n:5d}  L={lad:>12.0f}  L/B={lad / b:.3f}  L/S={lad / s:.3f}")
+    for other in ("binet", "strassen"):
+        better = flops["laderman"]["flops"] < flops[other]["flops"]
+        print(f"Liczba n (1..1000) z Laderman < {label[other]}:", int(better.sum()),
+              "np.", [int(n) for n in flops["binet"]["n"][better][:3]])
+
 print("\nWybrane czasy [ms]:")
-for alg in ("binet", "strassen"):
+for alg in ALGS:
     t = timing[alg]
     for n in (10, 50, 100, 200, 500, 1000):
         i = np.where(t["n"] == n)[0]
