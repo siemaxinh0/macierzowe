@@ -1,9 +1,6 @@
-// ============================================================================
 // ZADANIE 3: Rekurencyjne mnozenie macierzy metoda Ladermana
-// ============================================================================
 //
 // IDEA METODY
-// -----------
 // Strassen dzieli macierz na 2x2 bloki i mnozy je 7 razy zamiast 8.
 // Laderman (1976) dzieli macierz n x n na 3x3 bloki o rozmiarze n/3:
 //
@@ -51,7 +48,6 @@
 // Zlozonosc: T(n) = 23*T(n/3) + O(n^2)  =>  O(n^(log3 23)) ~ O(n^2.854).
 //
 // DOWOLNY ROZMIAR n - TECHNIKA "OBIERANIA" (dynamic peeling)
-// ----------------------------------------------------------
 // Podzial na 3x3 rowne bloki wymaga n podzielnego przez 3. Gdy r = n mod 3
 // jest rozne od 0, "odcinamy" r ostatnich wierszy i r ostatnich kolumn
 // (tak jak w strassen.cpp, tylko tam zawsze r = 1):
@@ -75,7 +71,6 @@
 // po prostu a*b, dla n = 2: 8 mnozen + 4 dodawania).
 //
 // LICZENIE OPERACJI
-// -----------------
 // Zliczamy operacje zmiennoprzecinkowe + - * /. Licznik g_flops zwiekszamy w:
 //   * add()/combine()  - po jednej operacji na element za kazdy dodany
 //                        lub odjety skladnik,
@@ -84,7 +79,6 @@
 // Kopiowanie blokow, generowanie macierzy i weryfikacja NIE sa liczone.
 //
 // KOMPILACJA I URUCHOMIENIE
-// -------------------------
 //   g++ -O2 -std=c++17 -o laderman.exe laderman.cpp
 //   laderman.exe              -> test dla domyslnej listy rozmiarow
 //   laderman.exe 5 16 100     -> test dla podanych rozmiarow n
@@ -93,7 +87,6 @@
 //   laderman.exe --flops nMin nMax              -> liczba operacji ze wzoru (bez mnozenia)
 //   laderman.exe --time nMin nMax krok powt.    -> zmierzony czas i liczba operacji
 //   laderman.exe --example                      -> przyklad 4x4 (magic(4) * magic(4)'/7)
-// ============================================================================
 
 #include <algorithm>         // std::max
 #include <chrono>            // pomiar czasu
@@ -115,10 +108,8 @@ static const int LADERMAN_CUTOFF = 2;
 // Licznik operacji zmiennoprzecinkowych (+, -, *, /).
 static unsigned long long g_flops = 0;
 
-// ----------------------------------------------------------------------------
 // Prosta klasa macierzy prostokatnej, elementy w jednym wektorze wierszami:
 // element (i, j) lezy pod indeksem i*cols + j.
-// ----------------------------------------------------------------------------
 struct Matrix {
     int rows = 0;
     int cols = 0;
@@ -132,9 +123,7 @@ struct Matrix {
     double operator()(int i, int j) const { return data[static_cast<size_t>(i) * cols + j]; }
 };
 
-// ----------------------------------------------------------------------------
 // Macierz n x n z liczbami losowymi z przedzialu [1e-8, 1.0), rozklad rownomierny.
-// ----------------------------------------------------------------------------
 Matrix randomMatrix(int n, std::mt19937& gen) {
     std::uniform_real_distribution<double> dist(0.00000001, 1.0);
     Matrix m(n, n);
@@ -164,14 +153,12 @@ Matrix add(const Matrix& A, const Matrix& B) {
     return C;
 }
 
-// ----------------------------------------------------------------------------
 // Kombinacja liniowa blokow: plus[0] + plus[1] + ... - minus[0] - minus[1] - ...
 // We wzorach Ladermana sumy maja do 7 skladnikow, wiec zamiast zagniezdzac
 // add(sub(add(...))) podajemy listy blokow dodawanych i odejmowanych.
 // Liczba operacji: (liczba skladnikow - 1) na kazdy element wyniku - dokladnie
 // tyle, ile przy liczeniu wzoru "recznie" od lewej do prawej.
 // Lista plus musi byc niepusta (pierwszy skladnik jest zawsze dodatni).
-// ----------------------------------------------------------------------------
 using MatrixList = std::initializer_list<std::reference_wrapper<const Matrix>>;
 
 Matrix combine(MatrixList plus, MatrixList minus = {}) {
@@ -189,11 +176,9 @@ Matrix combine(MatrixList plus, MatrixList minus = {}) {
     return C;
 }
 
-// ----------------------------------------------------------------------------
 // Klasyczne mnozenie macierzy prostokatnych (p x q) * (q x r).
 // Uzywane w przypadku bazowym oraz do "cienkich" iloczynow przy obieraniu.
 // Liczba operacji: p*r*q mnozen i p*r*(q-1) dodawan.
-// ----------------------------------------------------------------------------
 Matrix multiplyNaive(const Matrix& A, const Matrix& B) {
     const int p = A.rows, q = A.cols, r = B.cols;
     Matrix C(p, r);
@@ -209,19 +194,15 @@ Matrix multiplyNaive(const Matrix& A, const Matrix& B) {
     return C;
 }
 
-// ----------------------------------------------------------------------------
 // SERCE ALGORYTMU: rekurencyjne mnozenie metoda Ladermana.
 // A i B musza byc kwadratowe o tym samym rozmiarze n x n.
-// ----------------------------------------------------------------------------
 Matrix multiplyLaderman(const Matrix& A, const Matrix& B) {
     const int n = A.rows;
 
     // PRZYPADEK BAZOWY: macierz 1x1 lub 2x2 - mnozymy klasycznie.
     if (n <= LADERMAN_CUTOFF) return multiplyNaive(A, B);
 
-    // ------------------------------------------------------------------
     // n NIEPODZIELNE PRZEZ 3: obieranie r ostatnich wierszy i kolumn.
-    // ------------------------------------------------------------------
     const int r = n % 3;
     if (r != 0) {
         const int m = n - r;  // rozmiar "rdzenia" - podzielny przez 3 (i >= 3)
@@ -260,9 +241,7 @@ Matrix multiplyLaderman(const Matrix& A, const Matrix& B) {
         return C;
     }
 
-    // ------------------------------------------------------------------
     // n PODZIELNE PRZEZ 3: wlasciwy algorytm Ladermana.
-    // ------------------------------------------------------------------
     const int h = n / 3;  // rozmiar bloku
 
     // Podzial A i B na 9 blokow h x h.
@@ -318,10 +297,8 @@ Matrix multiplyLaderman(const Matrix& A, const Matrix& B) {
     return C;
 }
 
-// ----------------------------------------------------------------------------
 // Referencyjne mnozenie klasyczne - NIE zwieksza licznika g_flops.
 // Sluzy tylko do sprawdzenia poprawnosci wyniku Ladermana.
-// ----------------------------------------------------------------------------
 Matrix multiplyReference(const Matrix& A, const Matrix& B) {
     Matrix C(A.rows, B.cols);
     for (int i = 0; i < A.rows; ++i)
@@ -343,7 +320,6 @@ unsigned long long naiveCost(unsigned long long p, unsigned long long q, unsigne
     return p * r * (2 * q - 1);
 }
 
-// ----------------------------------------------------------------------------
 // MODEL LICZBY OPERACJI (dla raportu): ta sama rekurencja co multiplyLaderman,
 // ale tylko sumuje koszty zamiast mnozyc macierze. Pozwala policzyc liczbe
 // operacji dla duzych n bez wykonywania obliczen (wyniki identyczne z g_flops).
@@ -352,7 +328,6 @@ unsigned long long naiveCost(unsigned long long p, unsigned long long q, unsigne
 //   - w przeciwnym razie (r = n mod 3, m = n-r): L(m) + koszt "cienkich" iloczynow
 //     i 4 dodawan blokow (lacznie n*n elementow).
 // Dla n = 3^k wychodzi dokladnie L(n) = 8*23^k - 7*9^k.
-// ----------------------------------------------------------------------------
 unsigned long long flopsModel(int n, std::map<int, unsigned long long>& memo) {
     if (n <= LADERMAN_CUTOFF) return naiveCost(n, n, n);
     auto it = memo.find(n);

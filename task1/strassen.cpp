@@ -1,7 +1,6 @@
 ﻿// ZADANIE 2: Rekurencyjne mnozenie macierzy metoda Strassena
 //
 // IDEA METODY
-// -----------
 // Tak jak w metodzie Binet'a dzielimy macierze n x n na 4 bloki:
 //
 //        | A11 A12 |          | B11 B12 |          | C11 C12 |
@@ -28,7 +27,6 @@
 // Zlozonosc: T(n) = 7*T(n/2) + O(n^2)  =>  O(n^(log2 7)) ~ O(n^2.807).
 //
 // DOWOLNY ROZMIAR n - TECHNIKA "OBIERANIA" (dynamic peeling)
-// ----------------------------------------------------------
 // Podzial na 4 rowne bloki wymaga parzystego n. Gdy n jest NIEPARZYSTE,
 // "odcinamy" ostatni wiersz i ostatnia kolumne:
 //
@@ -52,7 +50,6 @@
 // macierzy klasyczne mnozenie jest szybsze.
 //
 // LICZENIE OPERACJI
-// -----------------
 // Zliczamy operacje zmiennoprzecinkowe + - * /. Licznik g_flops zwiekszamy w:
 //   * add()/sub()      - po jednej operacji na element wyniku,
 //   * multiplyNaive()  - mnozenia i dodawania klasycznego algorytmu
@@ -60,7 +57,6 @@
 // Kopiowanie blokow, generowanie macierzy i weryfikacja NIE sa liczone.
 //
 // KOMPILACJA I URUCHOMIENIE
-// -------------------------
 //   g++ -O2 -std=c++17 -o strassen.exe strassen.cpp
 //   strassen.exe              -> test dla domyslnej listy rozmiarow
 //   strassen.exe 5 16 100     -> test dla podanych rozmiarow n
@@ -88,10 +84,8 @@ static const int STRASSEN_CUTOFF = 1;
 // Licznik operacji zmiennoprzecinkowych (+, -, *, /).
 static unsigned long long g_flops = 0;
 
-// ----------------------------------------------------------------------------
 // Prosta klasa macierzy prostokatnej, elementy w jednym wektorze wierszami:
 // element (i, j) lezy pod indeksem i*cols + j.
-// ----------------------------------------------------------------------------
 struct Matrix {
     int rows = 0;
     int cols = 0;
@@ -105,9 +99,7 @@ struct Matrix {
     double operator()(int i, int j) const { return data[static_cast<size_t>(i) * cols + j]; }
 };
 
-// ----------------------------------------------------------------------------
 // Macierz n x n z liczbami losowymi z przedzialu [1e-8, 1.0), rozklad rownomierny.
-// ----------------------------------------------------------------------------
 Matrix randomMatrix(int n, std::mt19937& gen) {
     std::uniform_real_distribution<double> dist(0.00000001, 1.0);
     Matrix m(n, n);
@@ -145,11 +137,9 @@ Matrix sub(const Matrix& A, const Matrix& B) {
     return C;
 }
 
-// ----------------------------------------------------------------------------
 // Klasyczne mnozenie macierzy prostokatnych (p x q) * (q x r).
 // Uzywane w przypadku bazowym oraz do "cienkich" iloczynow przy obieraniu.
 // Liczba operacji: p*r*q mnozen i p*r*(q-1) dodawan.
-// ----------------------------------------------------------------------------
 Matrix multiplyNaive(const Matrix& A, const Matrix& B) {
     const int p = A.rows, q = A.cols, r = B.cols;
     Matrix C(p, r);
@@ -165,19 +155,15 @@ Matrix multiplyNaive(const Matrix& A, const Matrix& B) {
     return C;
 }
 
-// ----------------------------------------------------------------------------
 // SERCE ALGORYTMU: rekurencyjne mnozenie metoda Strassena.
 // A i B musza byc kwadratowe o tym samym rozmiarze n x n.
-// ----------------------------------------------------------------------------
 Matrix multiplyStrassen(const Matrix& A, const Matrix& B) {
     const int n = A.rows;
 
     // PRZYPADEK BAZOWY: macierz mala (domyslnie 1x1) - mnozymy klasycznie.
     if (n <= STRASSEN_CUTOFF) return multiplyNaive(A, B);
 
-    // ------------------------------------------------------------------
     // n NIEPARZYSTE: obieranie ostatniego wiersza i kolumny (patrz opis na gorze).
-    // ------------------------------------------------------------------
     if (n % 2 == 1) {
         const int m = n - 1;  // rozmiar "rdzenia" - parzysty
 
@@ -215,9 +201,7 @@ Matrix multiplyStrassen(const Matrix& A, const Matrix& B) {
         return C;
     }
 
-    // ------------------------------------------------------------------
     // n PARZYSTE: wlasciwy algorytm Strassena.
-    // ------------------------------------------------------------------
     const int h = n / 2;  // rozmiar bloku
 
     // Podzial A i B na cwiartki h x h.
@@ -256,10 +240,8 @@ Matrix multiplyStrassen(const Matrix& A, const Matrix& B) {
     return C;
 }
 
-// ----------------------------------------------------------------------------
 // Referencyjne mnozenie klasyczne - NIE zwieksza licznika g_flops.
 // Sluzy tylko do sprawdzenia poprawnosci wyniku Strassena.
-// ----------------------------------------------------------------------------
 Matrix multiplyReference(const Matrix& A, const Matrix& B) {
     Matrix C(A.rows, B.cols);
     for (int i = 0; i < A.rows; ++i)
@@ -277,14 +259,12 @@ double maxDifference(const Matrix& A, const Matrix& B) {
     return d;
 }
 
-// ----------------------------------------------------------------------------
 // MODEL LICZBY OPERACJI (dla raportu): ta sama rekurencja co multiplyStrassen,
 // ale tylko sumuje koszty zamiast mnozyc macierze. Pozwala policzyc liczbe
 // operacji dla duzych n bez wykonywania obliczen (wyniki identyczne z g_flops).
 //   - przypadek bazowy: n*n*(2n-1) operacji (klasyczne mnozenie),
 //   - n parzyste: 7*S(n/2) + 18*(n/2)^2   (10 dodawan wejsc + 8 skladania wyniku),
 //   - n nieparzyste (m = n-1): S(m) + koszt "cienkich" iloczynow i dodawan.
-// ----------------------------------------------------------------------------
 unsigned long long flopsModel(int n, std::map<int, unsigned long long>& memo) {
     if (n <= STRASSEN_CUTOFF) return 1ULL * n * n * (2ULL * n - 1);
     auto it = memo.find(n);
