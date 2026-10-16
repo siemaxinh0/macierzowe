@@ -64,7 +64,7 @@
 
 \begin{document}
 
-% === STRONA TYTUŁOWA + SPIS TREŚCI ==========================================
+% STRONA TYTUŁOWA + SPIS TREŚCI
 \thispagestyle{plain}
 \begin{center}
 \vspace*{3.5cm}
@@ -77,7 +77,7 @@ Algorytmy Macierzowe 2026/2027, grupa 2
 \tableofcontents
 \newpage
 
-% === 1. WSTĘP ===============================================================
+% 1. WSTĘP
 \section{Wstęp}
 Celem ćwiczenia była implementacja i porównanie trzech rekurencyjnych algorytmów mnożenia macierzy:
 metody Binét'a, metody Strassena~[1] oraz metody Ladermana. Wszystkie trzy mnożą macierze kwadratowe
@@ -87,7 +87,7 @@ Razem ze sprawozdaniem zawarty jest kod w języku C++ zawierający implementacj�
 (\texttt{binet.cpp}, \texttt{strassen.cpp}, \texttt{laderman.cpp}) oraz skrypty służące do generowania
 wykresów (\texttt{make\_plots.py}) i do porównania wyników z Octave/MATLAB (\texttt{compare.m}).
 
-% === 2. SPECYFIKACJA NARZĘDZI I SPRZĘTU =====================================
+% 2. SPECYFIKACJA NARZĘDZI I SPRZĘTU
 \section{Specyfikacja narzędzi i sprzętu}
 \textbf{Język nie jest interpretowany:} C++ jest kompilowany z góry do natywnego kodu maszynowego ARM64
 (Apple clang 21.0.0 wywoływany jako \texttt{g++}, flagi \texttt{-O2 -std=c++17}); powstały plik wykonywalny jest
@@ -103,7 +103,7 @@ $n=1,\dots,1000$, korzystając z modelu rekurencyjnego (to samo drzewo wywołań
 macierzy). Dla wszystkich zmierzonych $n$ model daje liczbę operacji identyczną z licznikiem w działającym programie.
 Maksymalny rozmiar, który udało się policzyć wszystkimi trzema metodami: $n=1000$.
 
-% === 3. ALGORYTMY ===========================================================
+% 3. ALGORYTMY
 \section{Algorytmy}
 Omawiane algorytmy polegają na zasadzie „dziel i rządź'', rekurencyjnie dzieląc macierze na podmacierze nazywane
 inaczej blokami. W klasycznej postaci przyjmują one ustalone rozmiary macierzy (parzyste dla metod Binét'a i Strassena,
@@ -377,7 +377,7 @@ Laderman: $L(n)=23L(n/3)+98(n/3)^2$, więc $L(n)=\Theta(n^{\log_3 23})\approx\Th
 dokładnie $L(n)=8\,n^{\log_3 23}-7\,n^2=8\cdot23^k-7\cdot9^k$ (sprawdzone dla $k=0,\dots,6$; np.\ $n=3$: 121 operacji).
 Obieranie przy $n\not\equiv0\pmod 3$ kosztuje tylko $O(n^2)$, więc nie zmienia rzędu złożoności.
 
-% === 4. PORÓWNANIE ALGORYTMÓW ===============================================
+% 4. PORÓWNANIE ALGORYTMÓW
 \clearpage
 \section{Porównanie algorytmów}
 Dokonaliśmy porównania algorytmów pod względem liczby wykonywanych operacji zmiennoprzecinkowych $(+,-,*,/)$
@@ -517,7 +517,7 @@ Strassen ma nieco większy błąd, bo wykonuje więcej dodawań/odejmowań w inn
 % UWAGA: wartości referencyjne w tej wersji wyznaczono równoważnym wywołaniem A @ B w NumPy.
 % Po uruchomieniu compare.m w Octave/MATLAB (dataDir = 'data_mateusz'; compare) sprawdź, czy błędy w tabeli się zgadzają.
 
-% === LITERATURA =============================================================
+% LITERATURA
 \begin{thebibliography}{9}
 \bibitem{strassen} V.~Strassen, \emph{Gaussian elimination is not optimal}, Numerische Mathematik 13 (1969), s.~354--356.
 \bibitem{peeling} S.~Huss-Lederman, E.~M.~Jacobson, J.~R.~Johnson, A.~Tsao, T.~Turnbull,

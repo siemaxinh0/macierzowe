@@ -1,6 +1,4 @@
-﻿// ============================================================================
-// ZADANIE 2: Rekurencyjne mnozenie macierzy metoda Strassena
-// ============================================================================
+﻿// ZADANIE 2: Rekurencyjne mnozenie macierzy metoda Strassena
 //
 // IDEA METODY
 // -----------
@@ -71,7 +69,6 @@
 //   strassen.exe --flops nMin nMax              -> liczba operacji ze wzoru (bez mnozenia)
 //   strassen.exe --time nMin nMax krok powt.    -> zmierzony czas i liczba operacji
 //   strassen.exe --example                      -> przyklad 4x4 (magic(4) * magic(4)'/7)
-// ============================================================================
 
 #include <algorithm>   // std::max
 #include <chrono>      // pomiar czasu

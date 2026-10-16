@@ -1,6 +1,4 @@
-﻿// ============================================================================
-// ZADANIE 1: Rekurencyjne mnozenie macierzy metoda Binet'a
-// ============================================================================
+﻿// ZADANIE 1: Rekurencyjne mnozenie macierzy metoda Binet'a
 //
 // IDEA METODY
 // -----------
@@ -53,7 +51,6 @@
 //   binet.exe --flops nMin nMax              -> liczba operacji ze wzoru (bez mnozenia)
 //   binet.exe --time nMin nMax krok powt.    -> zmierzony czas i liczba operacji
 //   binet.exe --example                      -> przyklad 4x4 (magic(4) * magic(4)'/7)
-// ============================================================================
 
 #include <algorithm>   // std::max
 #include <chrono>      // pomiar czasu
