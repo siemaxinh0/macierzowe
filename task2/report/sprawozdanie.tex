@@ -1,0 +1,143 @@
+\documentclass[11pt,a4paper]{article}
+
+% Pakiety
+\usepackage{iftex}
+\ifXeTeX
+  \usepackage{fontspec} % XeTeX/Tectonic: czcionki Unicode (domyślnie Latin Modern)
+\else
+  \usepackage[utf8]{inputenc}
+  \usepackage[T1]{fontenc}
+  \usepackage{lmodern}
+\fi
+\usepackage[polish]{babel}
+\usepackage{xcolor}
+\usepackage[a4paper,margin=2.3cm,headheight=14pt]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{algorithm}
+\usepackage[noEnd=true]{algpseudocodex}
+\usepackage[font=small,labelfont=normal]{caption}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{microtype}
+
+% Układ strony: nagłówek po prawej, numer strony na dole
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[R]{\small Rekurencyjne odwracanie macierzy i faktoryzacja LU}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\thepage}\renewcommand{\headrulewidth}{0pt}}
+
+% Akapity i nagłówki sekcji (pogrubione, bezszeryfowe)
+\setlength{\parindent}{1.5em}
+\setlength{\parskip}{2pt}
+\titleformat{\section}{\Large\bfseries\sffamily}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries\sffamily}{\thesubsection}{1em}{}
+\titlespacing*{\section}{0pt}{16pt}{8pt}
+\titlespacing*{\subsection}{0pt}{12pt}{6pt}
+\renewcommand{\arraystretch}{1.1}
+
+% Styl fragmentów kodu C++
+\lstset{
+  language=C++,
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\bfseries,
+  commentstyle=\itshape\color[gray]{0.35},
+  numbers=left, numberstyle=\tiny, numbersep=4pt,
+  frame=single, framerule=0.3pt, rulecolor=\color[gray]{0.6},
+  xleftmargin=10pt, aboveskip=3pt, belowskip=3pt,
+  columns=fullflexible, keepspaces=true, showstringspaces=false
+}
+
+% Pseudokod: polskie słowa kluczowe
+\floatname{algorithm}{Algorytm}
+\algrenewcommand\algorithmicprocedure{\textbf{Procedura}}
+\algrenewcommand\algorithmicif{\textbf{Jeżeli}}
+\algrenewcommand\algorithmicthen{\textbf{wykonaj}}
+\algrenewcommand\algorithmicelse{\textbf{W przeciwnym razie}}
+\algrenewcommand\algorithmicreturn{\textbf{Zwróć}}
+
+\newcommand{\Pomnoz}{\textsc{Pomnóż}}
+\newcommand{\Odwroc}{\textsc{Odwróć}}
+
+% Twierdzenia i dowody
+\newtheorem{tw}{Twierdzenie}
+\newtheorem{lem}{Lemat}
+\renewcommand{\proofname}{Dowód}
+
+% Miejsca do uzupełnienia (widoczne w PDF na czerwono)
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[DO UZUPEŁNIENIA: #1]}}}
+
+\begin{document}
+
+% STRONA TYTUŁOWA + SPIS TREŚCI
+\thispagestyle{plain}
+\begin{center}
+\vspace*{3.5cm}
+{\Large Rekurencyjne odwracanie macierzy i faktoryzacja LU}\\[1.5em]
+Mateusz Majta, Maksymilian Siemek\\[1.2em]
+Algorytmy Macierzowe 2026/2027, grupa 2
+\end{center}
+\vspace{1.2cm}
+\tableofcontents
+\newpage
+
+% 1. WSTĘP
+\section{Wstęp}
+Celem ćwiczenia była implementacja rekurencyjnego odwracania macierzy z mnożeniem metodami Binét'a, Strassena
+i Ladermana oraz rekurencyjnej faktoryzacji LU z mnożeniem metodami Binét'a i Strassena. Wszystkie algorytmy działają
+dla macierzy kwadratowych $n\times n$ o dowolnym rozmiarze, a macierze testowe zawierają liczby losowe z rozkładu
+równomiernego na przedziale $(10^{-8}, 1)$. Macierze mnożymy algorytmami z zadania~1, uogólnionymi na macierze
+prostokątne (rozdział~\ref{sec:mnozenie}). Rekurencyjne mnożenie metodą Ladermana (punkt~4 zestawu) wykonaliśmy
+w zadaniu~1. Liczymy wszystkie operacje zmiennoprzecinkowe $+,-,*,/$ na liczbach.
+
+Kod w C++ jest w folderze \texttt{task2}: \texttt{common.hpp} (macierz, licznik operacji), \texttt{mul\_*.hpp}
+(metody mnożenia), \texttt{inverse.hpp}/\texttt{inverse.cpp} (odwracanie), \texttt{lu.hpp}/\texttt{lu.cpp}
+(faktoryzacja LU) i \texttt{test\_mul.cpp} (testy mnożenia). Wykresy generuje \texttt{report/make\_plots.py}.
+
+% 2. SPECYFIKACJA NARZĘDZI I SPRZĘTU
+\section{Specyfikacja narzędzi i sprzętu}
+\todo{uzasadnienie, dlaczego C++ nie jest językiem interpretowanym, oraz parametry sprzętu. Pomiary w tym
+sprawozdaniu wykonano na: Apple M1 Pro (8 rdzeni: 6 wydajnych i 2 energooszczędne), 16~GB RAM (LPDDR5), macOS 26.5,
+Apple clang 21.0.0, flagi \texttt{-O2 -std=c++17}, obliczenia jednowątkowe}
+
+Czas mierzono zegarem \texttt{std::chrono::steady\_clock} tylko dla samego algorytmu (bez generowania macierzy
+i weryfikacji): dla $n\le200$ jako minimum z 3~powtórzeń, dla $n>200$ jako pojedynczy pomiar, tak jak w zadaniu~1.
+Pomiary czasu wykonano dla $n=1,2,\dots,200$ oraz $n=250,300,\dots,1000$ (krok 50). Liczbę operacji wyznaczono dla
+\emph{każdego} $n=1,\dots,1000$ z modelu rekurencyjnego (to samo drzewo wywołań co w algorytmie, ale bez obliczeń).
+Dla wszystkich zmierzonych $n$ model daje liczbę operacji identyczną z licznikiem w działającym programie.
+
+% 3. MNOŻENIE MACIERZY PROSTOKĄTNYCH
+\section{Mnożenie macierzy prostokątnych}\label{sec:mnozenie}
+\input{mnozenie_prostokatne}
+
+% 4. ODWRACANIE
+\clearpage
+\section{Rekurencyjne odwracanie macierzy}\label{sec:odwracanie}
+\input{odwracanie}
+
+% 5. FAKTORYZACJA LU
+\clearpage
+\section{Rekurencyjna faktoryzacja LU}\label{sec:lu}
+\todo{pseudokod, dowód poprawności, najważniejsze fragmenty kodu, przykład ręczny LU $3\times3$ (proponujemy tę samą
+macierz co w przykładzie odwracania: $L=[1\,0\,0;\,2\,1\,0;\,4\,3\,1]$, $U=[2\,1\,1;\,0\,1\,1;\,0\,0\,2]$),
+wykresy czasu i liczby operacji (\texttt{fig\_lu\_time.pdf}, \texttt{fig\_lu\_flops.pdf} z \texttt{make\_plots.py})}
+
+% 6. PODSUMOWANIE
+\section{Podsumowanie}
+\todo{wnioski po zebraniu wyników odwracania (z Strassenem) i LU}
+
+% LITERATURA
+\begin{thebibliography}{9}
+\bibitem{strassen} V.~Strassen, \emph{Gaussian elimination is not optimal}, Numerische Mathematik 13 (1969), s.~354--356.
+\bibitem{peeling} S.~Huss-Lederman, E.~M.~Jacobson, J.~R.~Johnson, A.~Tsao, T.~Turnbull,
+\emph{Implementation of Strassen's algorithm for matrix multiplication}, Supercomputing '96 (1996).
+\bibitem{laderman} J.~D.~Laderman, \emph{A noncommutative algorithm for multiplying $3\times3$ matrices using 23
+multiplications}, Bulletin of the American Mathematical Society 82 (1976), s.~126--128.
+\bibitem{higham} N.~J.~Higham, \emph{Accuracy and Stability of Numerical Algorithms}, wyd.~2, SIAM (2002).
+\end{thebibliography}
+
+\end{document}
