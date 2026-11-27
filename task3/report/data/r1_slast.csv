@@ -1,0 +1,5 @@
+channel,r,delta,eps,leaves,storage,ratio,max_rank,depth,rel_error,time_s
+R,1,slast,0.015887,252976,511562,1.9515,1,9,4.2655e-06,6.77
+G,1,slast,0.0421678,249055,504972,1.9263,1,9,1.9030e-05,6.83
+B,1,slast,0.0356116,248710,504790,1.9256,1,9,1.4361e-05,6.93
+RGB,1,slast,,,1521324,1.9345,,,psnr=inf,
