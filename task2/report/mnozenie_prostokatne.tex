@@ -1,0 +1,151 @@
+% Rozdział 3: mnożenie macierzy prostokątnych (wspólne dla odwracania i LU)
+Odwracanie i faktoryzacja LU dzielą macierz $n\times n$ w punkcie $h=\lceil n/2\rceil$, więc bloki pozadiagonalne
+mają wymiary $h\times k$ i $k\times h$, gdzie $k=n-h$. Mnożenia w tych algorytmach mają zatem postać
+$(p\times q)\cdot(q\times r)$ z różnymi $p,q,r$ (np.\ $A_{21}\cdot T$ to $(k\times h)\cdot(h\times k)$). Nawet przy
+parzystym $n$ rekurencja szybko schodzi do rozmiarów nieparzystych, więc takich mnożeń nie da się uniknąć.
+W zadaniu~1 metoda Binét'a mnożyła macierze prostokątne, a metody Strassena i Ladermana tylko kwadratowe.
+Uogólniamy je bez dopełniania zerami, żeby nie zawyżać liczby operacji.
+
+Każda metoda ma ten sam interfejs: funkcję \texttt{multiplyX(A, B)} dla macierzy
+$(p\times q)\cdot(q\times r)$ oraz model liczby operacji \texttt{flopsX(p, q, r)}, liczony tą samą rekurencją co
+algorytm, ale bez obliczeń. Odwracanie i LU dostają metodę mnożenia jako parametr (wskaźnik do funkcji), więc
+jeden kod odwracania obsługuje wszystkie trzy metody.
+
+\subsection{Metoda Binét'a}
+Kod z zadania~1 nie wymagał zmian (\texttt{mul\_binet.hpp}). Przyda się następujący fakt.
+
+\begin{lem}\label{lem:binet}
+Metoda Binét'a dla $(p\times q)\cdot(q\times r)$ wykonuje dokładnie $pr(2q-1)$ operacji, czyli tyle samo co mnożenie
+klasyczne.
+\end{lem}
+\begin{proof}
+Indukcja po $p+q+r$. Gdy któryś wymiar wynosi 1, metoda wykonuje mnożenie klasyczne: $pr$ elementów wyniku,
+każdy z $q$ mnożeniami i $q-1$ dodawaniami. W kroku rekurencji wymiary dzielą się na $p=p_1+p_2$, $q=q_1+q_2$,
+$r=r_1+r_2$. Osiem iloczynów bloków kosztuje z założenia indukcyjnego
+$\sum_{i,j}p_ir_j\bigl[(2q_1-1)+(2q_2-1)\bigr]=pr(2q-2)$, a cztery dodawania bloków dają razem $pr$ operacji.
+Suma wynosi $pr(2q-1)$.
+\end{proof}
+
+\subsection{Metoda Strassena}
+\todo{Strassen dla macierzy prostokątnych: obieranie po każdym wymiarze osobno (mod 2), przypadek bazowy,
+model liczby operacji, testy}
+
+\subsection{Metoda Ladermana}
+Gdy $p$, $q$ i $r$ dzielą się przez 3, dzielimy $A$ na $3\times3$ bloki o wymiarach $\frac p3\times\frac q3$, a $B$ na
+bloki $\frac q3\times\frac r3$. Liczymy 23 iloczyny $M_1,\dots,M_{23}$ i bloki wyniku $C_{ij}$ (wymiary
+$\frac p3\times\frac r3$) ze wzorów Ladermana~\cite{laderman}, tych samych co w zadaniu~1:
+{\small
+\begin{equation}\label{eq:laderman-m}
+\begin{aligned}
+M_{1}  &= (A_{11}{+}A_{12}{+}A_{13}{-}A_{21}{-}A_{22}{-}A_{32}{-}A_{33})\,B_{22} &
+M_{2}  &= (A_{11}{-}A_{21})(B_{22}{-}B_{12}) \\
+M_{3}  &= A_{22}\,(B_{12}{+}B_{21}{+}B_{33}{-}B_{11}{-}B_{22}{-}B_{23}{-}B_{31}) &
+M_{4}  &= (A_{21}{+}A_{22}{-}A_{11})(B_{11}{+}B_{22}{-}B_{12}) \\
+M_{5}  &= (A_{21}{+}A_{22})(B_{12}{-}B_{11}) &
+M_{6}  &= A_{11}B_{11} \\
+M_{7}  &= (A_{31}{+}A_{32}{-}A_{11})(B_{11}{+}B_{23}{-}B_{13}) &
+M_{8}  &= (A_{31}{-}A_{11})(B_{13}{-}B_{23}) \\
+M_{9}  &= (A_{31}{+}A_{32})(B_{13}{-}B_{11}) &
+M_{10} &= (A_{11}{+}A_{12}{+}A_{13}{-}A_{22}{-}A_{23}{-}A_{31}{-}A_{32})\,B_{23} \\
+M_{11} &= A_{32}\,(B_{13}{+}B_{21}{+}B_{32}{-}B_{11}{-}B_{22}{-}B_{23}{-}B_{31}) &
+M_{12} &= (A_{32}{+}A_{33}{-}A_{13})(B_{22}{+}B_{31}{-}B_{32}) \\
+M_{13} &= (A_{13}{-}A_{33})(B_{22}{-}B_{32}) &
+M_{14} &= A_{13}B_{31} \\
+M_{15} &= (A_{32}{+}A_{33})(B_{32}{-}B_{31}) &
+M_{16} &= (A_{22}{+}A_{23}{-}A_{13})(B_{23}{+}B_{31}{-}B_{33}) \\
+M_{17} &= (A_{13}{-}A_{23})(B_{23}{-}B_{33}) &
+M_{18} &= (A_{22}{+}A_{23})(B_{33}{-}B_{31}) \\
+M_{19} &= A_{12}B_{21},\quad M_{20} = A_{23}B_{32},\quad M_{21} = A_{21}B_{13} &
+M_{22} &= A_{31}B_{12},\quad M_{23} = A_{33}B_{33}
+\end{aligned}
+\end{equation}
+\begin{equation}\label{eq:laderman-c}
+\begin{aligned}
+C_{11} &= M_6{+}M_{14}{+}M_{19} &
+C_{12} &= M_1{+}M_4{+}M_5{+}M_6{+}M_{12}{+}M_{14}{+}M_{15} \\
+C_{13} &= M_6{+}M_7{+}M_9{+}M_{10}{+}M_{14}{+}M_{16}{+}M_{18} &
+C_{21} &= M_2{+}M_3{+}M_4{+}M_6{+}M_{14}{+}M_{16}{+}M_{17} \\
+C_{22} &= M_2{+}M_4{+}M_5{+}M_6{+}M_{20} &
+C_{23} &= M_{14}{+}M_{16}{+}M_{17}{+}M_{18}{+}M_{21} \\
+C_{31} &= M_6{+}M_7{+}M_8{+}M_{11}{+}M_{12}{+}M_{13}{+}M_{14} &
+C_{32} &= M_{12}{+}M_{13}{+}M_{14}{+}M_{15}{+}M_{22} \\
+C_{33} &= M_6{+}M_7{+}M_8{+}M_9{+}M_{23}
+\end{aligned}
+\end{equation}
+}%
+W przeciwnym razie „obieramy'' każdy wymiar osobno: odcinamy $p_s=p\bmod3$ ostatnich wierszy $A$, $q_s=q\bmod3$
+ostatnich kolumn $A$ (i wierszy $B$) oraz $r_s=r\bmod3$ ostatnich kolumn $B$. Rdzeń
+$(p_m\times q_m)\cdot(q_m\times r_m)$, gdzie $p_m=p-p_s$ itd., ma wszystkie wymiary podzielne przez 3. Pozostałe
+iloczyny mają któryś wymiar równy 1 lub 2, więc od razu trafiają do przypadku bazowego. Dla $p=q=r=n$ algorytm
+wykonuje dokładnie te same operacje co wersja kwadratowa z zadania~1.
+
+\begin{algorithm}[H]
+\caption{Rekurencyjne mnożenie macierzy prostokątnych metodą Ladermana}
+\begin{algorithmic}[1]
+\Procedure{\Pomnoz}{$A, B$} \Comment{$A$: $p\times q$, $B$: $q\times r$}
+  \If{$\min(p,q,r)\le2$}
+    \State \Return \textsc{MnożenieKlasyczne}$(A,B)$
+  \EndIf
+  \If{$3\mid p$, $3\mid q$ i $3\mid r$}
+    \State podziel $A$ na bloki $\frac p3\times\frac q3$, a $B$ na bloki $\frac q3\times\frac r3$
+    \State $M_i\gets\Pomnoz(\cdot,\cdot)$ dla $i=1,\dots,23$ według \eqref{eq:laderman-m}
+    \State $C_{ij}$ ze wzorów \eqref{eq:laderman-c}
+  \Else
+    \State wydziel rdzeń $A_{11}$ ($p_m{\times}q_m$), paski $a_{12}$, $a_{21}$ i róg $a_{22}$ (tak samo $B$)
+    \State $C_{11}\gets \Pomnoz(A_{11},B_{11})+\Pomnoz(a_{12},b_{21})$, \;
+           $C_{12}\gets \Pomnoz(A_{11},b_{12})+\Pomnoz(a_{12},b_{22})$
+    \State $C_{21}\gets \Pomnoz(a_{21},B_{11})+\Pomnoz(a_{22},b_{21})$, \;
+           $C_{22}\gets \Pomnoz(a_{21},b_{12})+\Pomnoz(a_{22},b_{22})$
+    \State \Comment{składniki z pustym blokiem (np.\ gdy $q_s=0$) pomijamy}
+  \EndIf
+  \State \Return $C$ złożone z bloków $C_{ij}$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Poprawność.} Wzory~\eqref{eq:laderman-m}--\eqref{eq:laderman-c} są tożsamościami w pierścieniu
+nieprzemiennym: w każdym iloczynie $M_i$ czynnik złożony z bloków $A$ stoi po lewej, a z bloków $B$ po prawej, i po
+rozwinięciu $C_{ij}$ daje $\sum_k A_{ik}B_{kj}$ bez korzystania z przemienności. Wystarczy więc, żeby wymiary bloków
+do siebie pasowały: wszystkie $A_{ij}$ mają wymiar $\frac p3\times\frac q3$, a wszystkie $B_{ij}$ wymiar
+$\frac q3\times\frac r3$. Obieranie to zwykłe mnożenie blokowe dla zgodnych podziałów. Rekurencja się kończy, bo
+w każdym wywołaniu albo wszystkie wymiary maleją trzykrotnie, albo rdzeń jest mniejszy od wejścia (a cienkie
+iloczyny od razu idą do przypadku bazowego).
+
+\paragraph{Liczba operacji.} Na jednym poziomie z podziałem $3\times3$ jest 28 sum bloków $A$, 28 sum bloków $B$
+i 42 dodawania przy składaniu $C$, więc
+\[
+L(p,q,r)=23\,L\!\left(\tfrac p3,\tfrac q3,\tfrac r3\right)+28\,\tfrac{pq}{9}+28\,\tfrac{qr}{9}+42\,\tfrac{pr}{9},
+\]
+a przy obieraniu sumujemy koszty siedmiu iloczynów i czterech dodawań bloków. Dla $p=q=r$ daje to
+$23L(n/3)+98(n/3)^2$, tak jak w zadaniu~1.
+
+\paragraph{Testy.} Program \texttt{test\_mul} sprawdza wszystkie trójki $p,q,r\in\{1,\dots,30\}$ i 40 losowych
+trójek z $\{31,\dots,200\}$, razem 27\,040 rozmiarów. W każdym przypadku wynik zgadza się z mnożeniem
+referencyjnym ($\max|C-C_{\mathrm{ref}}|/q\le5{,}3\cdot10^{-16}$), a licznik operacji jest równy modelowi. Dla macierzy
+kwadratowych $n=1,\dots,1000$ model daje liczby identyczne z programem z zadania~1 (porównanie plików CSV bajt
+w bajt).
+
+\begin{figure}[H]
+\centering
+\begin{lstlisting}
+// p, q, r nie wszystkie podzielne przez 3: obieranie po kazdym wymiarze osobno
+const int pm = p - p % 3, qm = q - q % 3, rm = r - r % 3;
+const int ps = p - pm, qs = q - qm, rs = r - rm;
+Matrix A11 = subMatrix(A, 0, 0, pm, qm), a12 = subMatrix(A, 0, qm, pm, qs);
+Matrix a21 = subMatrix(A, pm, 0, ps, qm), a22 = subMatrix(A, pm, qm, ps, qs);
+Matrix B11 = subMatrix(B, 0, 0, qm, rm), b12 = subMatrix(B, 0, rm, qm, rs);
+Matrix b21 = subMatrix(B, qm, 0, qs, rm), b22 = subMatrix(B, qm, rm, qs, rs);
+
+Matrix C(p, r);
+Matrix C11 = multiplyLaderman(A11, B11);
+if (qs > 0) C11 = add(C11, multiplyLaderman(a12, b21));
+placeBlock(C, C11, 0, 0);
+if (rs > 0) {
+    Matrix C12 = multiplyLaderman(A11, b12);
+    if (qs > 0) C12 = add(C12, multiplyLaderman(a12, b22));
+    placeBlock(C, C12, 0, rm);
+}
+// ... C21 i C22 analogicznie (gdy ps > 0)
+\end{lstlisting}
+\caption{Obieranie w mnożeniu Ladermana dla macierzy prostokątnych (\texttt{mul\_laderman.hpp}).}
+\end{figure}
